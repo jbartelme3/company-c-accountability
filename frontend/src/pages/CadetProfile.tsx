@@ -1,0 +1,129 @@
+import { useEffect, useState } from "react";
+import { cadetsApi } from "../api/client";
+import type { CadetProfile as CadetProfileType, MetricType } from "../types";
+import { METRIC_LABELS, METRIC_TYPE_ORDER, formatPosition, formatRank, isEligibleForNewCadetLineupGig } from "../types";
+import MetricBadge from "../components/MetricBadge";
+import MetricEntryModal from "../components/MetricEntryModal";
+import CadetForm from "../components/CadetForm";
+
+export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onBack: () => void }) {
+  const [profile, setProfile] = useState<CadetProfileType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [openType, setOpenType] = useState<MetricType | null>(null);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const data = await cadetsApi.get(cadetId);
+      setProfile(data);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cadetId]);
+
+  if (loading || !profile) {
+    return (
+      <div>
+        <BackButton onBack={onBack} />
+        <p className="mt-4 text-sm text-slate-400">Loading…</p>
+      </div>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div>
+        <BackButton onBack={onBack} />
+        <h2 className="mt-4 mb-3 text-lg font-bold text-slate-900">Edit Cadet</h2>
+        <CadetForm
+          submitLabel="Save Changes"
+          initial={{ first_name: profile.first_name, last_name: profile.last_name, position: profile.position, rank: profile.rank }}
+          onCancel={() => setEditing(false)}
+          onSubmit={async (values) => {
+            await cadetsApi.update(cadetId, values);
+            setEditing(false);
+            load();
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <BackButton onBack={onBack} />
+
+      <div className={`mt-4 rounded-lg border p-5 ${profile.is_cadre ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"}`}>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className={`text-xl font-bold ${profile.is_cadre ? "text-blue-900" : "text-slate-900"}`}>
+              {profile.first_name} {profile.last_name}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">Position: {formatPosition(profile.position)}</p>
+            <p className="mt-0.5 text-sm text-slate-600">Rank: {formatRank(profile.rank)}</p>
+            {profile.is_cadre && <p className="mt-1 text-sm font-medium text-blue-800">Cadre</p>}
+          </div>
+          <button
+            onClick={() => setEditing(true)}
+            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        <h3 className="text-sm font-semibold text-slate-700">Cadet Metrics</h3>
+
+        {METRIC_TYPE_ORDER.map((type) => {
+          const typeEntries = profile.metric_entries.filter((e) => e.type === type);
+          const eligible = type !== "new_cadet_lineup_gig" || isEligibleForNewCadetLineupGig(profile);
+          return (
+            <button
+              key={type}
+              onClick={() => setOpenType(type)}
+              className={`flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white p-4 text-left hover:bg-slate-50 ${
+                eligible ? "" : "opacity-60"
+              }`}
+            >
+              <span className="text-sm font-semibold text-slate-800">{METRIC_LABELS[type]}</span>
+              <span className="flex items-center gap-2">
+                <MetricBadge type={type} count={typeEntries.length} />
+                <span className="text-xs text-slate-400">
+                  {!eligible ? "N/A" : typeEntries.length === 0 ? "Add" : "View"}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {openType && (
+        <MetricEntryModal
+          cadetId={cadetId}
+          cadetName={`${profile.first_name} ${profile.last_name}`}
+          type={openType}
+          entries={profile.metric_entries.filter((e) => e.type === openType)}
+          canAdd={openType !== "new_cadet_lineup_gig" || isEligibleForNewCadetLineupGig(profile)}
+          ineligibleReason="New Cadet Lineup Gigs only apply to cadets holding the New Cadet position at the New Cadet/Private/PFC rank."
+          onClose={() => setOpenType(null)}
+          onChanged={load}
+        />
+      )}
+    </div>
+  );
+}
+
+function BackButton({ onBack }: { onBack: () => void }) {
+  return (
+    <button onClick={onBack} className="text-sm font-medium text-slate-500 hover:text-slate-800">
+      ← Back to roster
+    </button>
+  );
+}
