@@ -3,3 +3,10 @@ dist
 .wrangler
 .dev.vars
 *.log
+
+# D1 database dumps (wrangler d1 export) — contain real cadet data, never commit.
+backup-*.sql
+
+# Reference material dropped in the repo root, not app source.
+*.docx
+*.pdf
