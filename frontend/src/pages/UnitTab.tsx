@@ -36,11 +36,7 @@ export default function UnitTab({ unitType }: { unitType: UnitType }) {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-bold text-slate-900">{label}s</h2>
-        <p className="mb-4 mt-1 text-sm text-slate-500">
-          {label}s are named after their {leaderPosition}. Each {label.toLowerCase()}'s metrics automatically sum every cadet
-          currently assigned to it.
-        </p>
+        <h2 className="mb-4 text-lg font-bold text-slate-900">{label}s</h2>
 
         {data.units.length === 0 ? (
           <p className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-400">
@@ -57,9 +53,6 @@ export default function UnitTab({ unitType }: { unitType: UnitType }) {
         {data.unassigned.length > 0 && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
             <h3 className="text-sm font-semibold text-amber-900">Unassigned ({data.unassigned.length})</h3>
-            <p className="mt-1 text-xs text-amber-700">
-              Eligible for a {label.toLowerCase()} but not sorted into one yet — assign them from their cadet card.
-            </p>
             <ul className="mt-2 space-y-1 text-sm text-amber-900">
               {data.unassigned.map((c) => (
                 <li key={c.id}>
