@@ -10,3 +10,7 @@ backup-*.sql
 # Reference material dropped in the repo root, not app source.
 *.docx
 *.pdf
+
+# Claude Code local tooling config — dev-server launch entries and Bash
+# permission grants are per-developer, not project config to share.
+.claude/
