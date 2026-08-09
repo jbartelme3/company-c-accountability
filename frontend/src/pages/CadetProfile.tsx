@@ -1,7 +1,20 @@
 import { useEffect, useState } from "react";
 import { cadetsApi } from "../api/client";
-import type { CadetProfile as CadetProfileType, MetricType } from "../types";
-import { METRIC_LABELS, METRIC_TYPE_ORDER, formatPosition, formatRank, isEligibleForNewCadetLineupGig } from "../types";
+import type { CadetProfile as CadetProfileType, MetricType, UnitType } from "../types";
+import {
+  LEADER_POSITION_FOR_UNIT,
+  METRIC_LABELS,
+  METRIC_TYPE_ORDER,
+  UNIT_TYPE_LABELS,
+  formatClassYear,
+  formatPosition,
+  formatRank,
+  formatSecondaryPosition,
+  isEligibleForNewCadetLineupGig,
+  isPlatoonEligible,
+  isSquadEligible,
+  isTeamEligible,
+} from "../types";
 import MetricBadge from "../components/MetricBadge";
 import MetricEntryModal from "../components/MetricEntryModal";
 import CadetForm from "../components/CadetForm";
@@ -43,7 +56,17 @@ export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onB
         <h2 className="mt-4 mb-3 text-lg font-bold text-slate-900">Edit Cadet</h2>
         <CadetForm
           submitLabel="Save Changes"
-          initial={{ first_name: profile.first_name, last_name: profile.last_name, position: profile.position, rank: profile.rank }}
+          initial={{
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            position: profile.position,
+            rank: profile.rank,
+            class_year: profile.class_year,
+            secondary_position: profile.secondary_position,
+            team_leader_id: profile.team_leader_id,
+            squad_leader_id: profile.squad_leader_id,
+            platoon_leader_id: profile.platoon_leader_id,
+          }}
           onCancel={() => setEditing(false)}
           onSubmit={async (values) => {
             await cadetsApi.update(cadetId, values);
@@ -67,7 +90,12 @@ export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onB
             </h2>
             <p className="mt-1 text-sm text-slate-600">Position: {formatPosition(profile.position)}</p>
             <p className="mt-0.5 text-sm text-slate-600">Rank: {formatRank(profile.rank)}</p>
+            <p className="mt-0.5 text-sm text-slate-600">Class Year: {formatClassYear(profile.class_year)}</p>
+            {profile.secondary_position && (
+              <p className="mt-0.5 text-sm text-slate-600">Secondary Duty: {formatSecondaryPosition(profile.secondary_position)}</p>
+            )}
             {profile.is_cadre && <p className="mt-1 text-sm font-medium text-blue-800">Cadre</p>}
+            <UnitAssignments profile={profile} />
           </div>
           <button
             onClick={() => setEditing(true)}
@@ -116,6 +144,39 @@ export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onB
           onChanged={load}
         />
       )}
+    </div>
+  );
+}
+
+function UnitAssignments({ profile }: { profile: CadetProfileType }) {
+  const allRows: { unitType: UnitType; leaderName: string | null; leaderId: number | null }[] = [
+    { unitType: "team", leaderName: profile.team_leader_name, leaderId: profile.team_leader_id },
+    { unitType: "squad", leaderName: profile.squad_leader_name, leaderId: profile.squad_leader_id },
+    { unitType: "platoon", leaderName: profile.platoon_leader_name, leaderId: profile.platoon_leader_id },
+  ];
+  const rows = allRows.filter((r) => {
+    if (r.unitType === "team") return isTeamEligible(profile.position);
+    if (r.unitType === "squad") return isSquadEligible(profile.position);
+    return isPlatoonEligible(profile.position);
+  });
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {rows.map((r) => {
+        const unitNoun = UNIT_TYPE_LABELS[r.unitType].toLowerCase();
+        const isLeader = profile.position === LEADER_POSITION_FOR_UNIT[r.unitType];
+        const value = isLeader ? `Leads own ${unitNoun}` : r.leaderName ? `${r.leaderName}'s ${unitNoun}` : "Unassigned";
+        return (
+          <span
+            key={r.unitType}
+            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-700"
+          >
+            {UNIT_TYPE_LABELS[r.unitType]}: {value}
+          </span>
+        );
+      })}
     </div>
   );
 }

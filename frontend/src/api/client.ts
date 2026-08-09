@@ -1,4 +1,4 @@
-import type { Cadet, CadetProfile, LaundryType, MetricEntry, MetricType } from "../types";
+import type { BannerResult, Cadet, CadetProfile, LaundryType, MetricEntry, MetricType, UnitAward, UnitCompilation, UnitType } from "../types";
 
 class ApiError extends Error {
   status: number;
@@ -72,4 +72,33 @@ export const metricsApi = {
   update: (id: number, data: Partial<{ entry_date: string; note: string | null; laundry_type: LaundryType | null }>) =>
     request<MetricEntry>(`/api/metrics/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: number) => request<void>(`/api/metrics/${id}`, { method: "DELETE" }),
+};
+
+export const unitsApi = {
+  compile: (type: UnitType) => request<UnitCompilation>(`/api/units/${type}`),
+};
+
+export const unitAwardsApi = {
+  list: (type?: UnitType) => request<UnitAward[]>(`/api/unit-awards${type ? `?type=${type}` : ""}`),
+  create: (data: { entry_date: string; unit_type: UnitType; leader_cadet_id: number; note?: string | null }) =>
+    request<UnitAward>("/api/unit-awards", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: number, data: Partial<{ entry_date: string; leader_cadet_id: number; note: string | null }>) =>
+    request<UnitAward>(`/api/unit-awards/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  remove: (id: number) => request<void>(`/api/unit-awards/${id}`, { method: "DELETE" }),
+};
+
+export const bannersApi = {
+  list: () => request<BannerResult[]>("/api/banners"),
+  create: (data: {
+    entry_date: string;
+    make_number?: number | null;
+    battalion_rank?: number | null;
+    battalion_score?: number | null;
+    regimental_rank?: number | null;
+    regimental_score?: number | null;
+    note?: string | null;
+  }) => request<BannerResult>("/api/banners", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: number, data: Partial<Omit<BannerResult, "id">>) =>
+    request<BannerResult>(`/api/banners/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  remove: (id: number) => request<void>(`/api/banners/${id}`, { method: "DELETE" }),
 };

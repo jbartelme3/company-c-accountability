@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { cadetsApi } from "../api/client";
 import type { Cadet } from "../types";
-import { POSITIONS, RANKS } from "../types";
+import { CLASS_YEARS, POSITIONS, RANKS } from "../types";
 import CadetProfile from "./CadetProfile";
 import CadetRow from "../components/CadetRow";
 import AddCadetForm from "../components/AddCadetForm";
@@ -17,6 +17,7 @@ export default function CadetsTab() {
   const [filterPosition, setFilterPosition] = useState("");
   const [filterRank, setFilterRank] = useState("");
   const [filterCadre, setFilterCadre] = useState("");
+  const [filterClassYear, setFilterClassYear] = useState("");
 
   async function load() {
     setLoading(true);
@@ -43,7 +44,8 @@ export default function CadetsTab() {
     );
   }
 
-  const isFiltering = search.trim() !== "" || filterPosition !== "" || filterRank !== "" || filterCadre !== "";
+  const isFiltering =
+    search.trim() !== "" || filterPosition !== "" || filterRank !== "" || filterCadre !== "" || filterClassYear !== "";
 
   const filteredCadets = cadets.filter((c) => {
     if (search.trim() && !`${c.first_name} ${c.last_name}`.toLowerCase().includes(search.trim().toLowerCase())) return false;
@@ -51,6 +53,7 @@ export default function CadetsTab() {
     if (filterRank && c.rank !== filterRank) return false;
     if (filterCadre === "yes" && !c.is_cadre) return false;
     if (filterCadre === "no" && c.is_cadre) return false;
+    if (filterClassYear && c.class_year !== filterClassYear) return false;
     return true;
   });
 
@@ -59,6 +62,7 @@ export default function CadetsTab() {
     setFilterPosition("");
     setFilterRank("");
     setFilterCadre("");
+    setFilterClassYear("");
   }
 
   return (
@@ -96,12 +100,24 @@ export default function CadetsTab() {
             onClick={() => setShowFilters((v) => !v)}
             className="whitespace-nowrap rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
-            Filters{filterPosition || filterRank || filterCadre ? " •" : ""}
+            Filters{filterPosition || filterRank || filterCadre || filterClassYear ? " •" : ""}
           </button>
         </div>
 
         {showFilters && (
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <select
+              value={filterClassYear}
+              onChange={(e) => setFilterClassYear(e.target.value)}
+              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              <option value="">All class years</option>
+              {CLASS_YEARS.map((cy) => (
+                <option key={cy} value={cy}>
+                  {cy}
+                </option>
+              ))}
+            </select>
             <select
               value={filterPosition}
               onChange={(e) => setFilterPosition(e.target.value)}

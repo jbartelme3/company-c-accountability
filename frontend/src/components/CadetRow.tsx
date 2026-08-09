@@ -1,6 +1,11 @@
 import type { Cadet } from "../types";
 import { formatPosition } from "../types";
 
+function classYearAbbrev(classYear: string | null): string {
+  if (!classYear) return "";
+  return { Freshman: "Fr", Sophomore: "So", Junior: "Jr", Senior: "Sr" }[classYear] ?? classYear;
+}
+
 export default function CadetRow({ cadet, onSelect }: { cadet: Cadet; onSelect: () => void }) {
   return (
     <button
@@ -14,6 +19,7 @@ export default function CadetRow({ cadet, onSelect }: { cadet: Cadet; onSelect: 
       </span>
       <span className="flex flex-col items-end gap-0.5 text-right">
         <span className="text-xs text-slate-500">
+          {classYearAbbrev(cadet.class_year) && `${classYearAbbrev(cadet.class_year)} · `}
           {formatPosition(cadet.position)}
           {cadet.is_cadre ? " · Cadre" : ""}
         </span>

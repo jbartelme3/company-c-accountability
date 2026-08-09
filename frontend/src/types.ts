@@ -3,7 +3,9 @@ export type MetricType =
   | "haircut"
   | "laundry_gig"
   | "absence"
+  | "daily_room_inspection_gig"
   | "battalion_inspection_gig"
+  | "major_green_inspection_gig"
   | "regimental_inspection_gig"
   | "positive_epr"
   | "negative_epr"
@@ -16,7 +18,9 @@ export const METRIC_TYPE_ORDER: MetricType[] = [
   "haircut",
   "laundry_gig",
   "absence",
+  "daily_room_inspection_gig",
   "battalion_inspection_gig",
+  "major_green_inspection_gig",
   "regimental_inspection_gig",
   "positive_epr",
   "negative_epr",
@@ -29,7 +33,9 @@ export const METRIC_LABELS: Record<MetricType, string> = {
   haircut: "In-Unit Haircut",
   laundry_gig: "Laundry Gig",
   absence: "Absence",
+  daily_room_inspection_gig: "Daily Room Inspection Gig",
   battalion_inspection_gig: "Battalion Inspection Gig",
+  major_green_inspection_gig: "Major Green Inspection Gig",
   regimental_inspection_gig: "Regimental Inspection Gig",
   positive_epr: "Positive EPR",
   negative_epr: "Negative EPR",
@@ -44,7 +50,9 @@ export const METRIC_POLARITY: Record<MetricType, Polarity> = {
   haircut: "neutral",
   laundry_gig: "negative",
   absence: "negative",
+  daily_room_inspection_gig: "negative",
   battalion_inspection_gig: "negative",
+  major_green_inspection_gig: "negative",
   regimental_inspection_gig: "negative",
   positive_epr: "positive",
   negative_epr: "negative",
@@ -69,12 +77,30 @@ export const LAUNDRY_TYPE_LABELS: Record<LaundryType, string> = {
   dry_cleaning: "Dry Cleaning",
 };
 
-// New Cadet Lineup Gigs only apply to cadets currently holding the New Cadet
-// position at a New Cadet-tier rank.
+// Freshman = 4th Classman, Sophomore = 3rd, Junior = 2nd, Senior = 1st.
+export type ClassYear = "Freshman" | "Sophomore" | "Junior" | "Senior";
+
+export const CLASS_YEARS: ClassYear[] = ["Freshman", "Sophomore", "Junior", "Senior"];
+
+export const CLASSMAN_LABELS: Record<ClassYear, string> = {
+  Freshman: "4th Classman",
+  Sophomore: "3rd Classman",
+  Junior: "2nd Classman",
+  Senior: "1st Classman",
+};
+
+export function formatClassYear(classYear: string | null): string {
+  if (!classYear) return "—";
+  const label = CLASSMAN_LABELS[classYear as ClassYear];
+  return label ? `${classYear} (${label})` : classYear;
+}
+
+// New Cadet Lineup Gigs only apply to cadets currently holding the Element
+// position (the rank-and-file base position) at a New Cadet-tier rank.
 const NEW_CADET_LINEUP_RANKS = new Set(["New Cadet", "Private", "Private First Class"]);
 
 export function isEligibleForNewCadetLineupGig(cadet: Pick<Cadet, "position" | "rank">): boolean {
-  return cadet.position === "New Cadet" && !!cadet.rank && NEW_CADET_LINEUP_RANKS.has(cadet.rank);
+  return cadet.position === "Element" && !!cadet.rank && NEW_CADET_LINEUP_RANKS.has(cadet.rank);
 }
 
 export interface PositionOption {
@@ -82,18 +108,15 @@ export interface PositionOption {
   abbrev: string;
 }
 
-// Unit (Company C) level.
+// Unit (Company C) level — primary leadership/command billets only. Branch
+// Insignia Officer/NCO, Unit Academic/Athletic Officer, Unit Clerk, and
+// Guidon Bearer are collateral duties held *alongside* one of these, not
+// separate primary positions — see SECONDARY_POSITIONS. Unit Supply Officer
+// is folded into Unit NCO in Company C.
 export const UNIT_POSITIONS: PositionOption[] = [
-  { label: "New Cadet", abbrev: "NC" },
+  { label: "Element", abbrev: "ELM" },
   { label: "Team Leader", abbrev: "TL" },
   { label: "Squad Leader", abbrev: "SL" },
-  { label: "Unit Clerk", abbrev: "CLERK" },
-  { label: "Guidon Bearer", abbrev: "GUIDON" },
-  { label: "Branch Insignia Officer", abbrev: "BIO" },
-  { label: "Branch Insignia NCO", abbrev: "BI-NCO" },
-  { label: "Unit Academic Officer", abbrev: "ACAD" },
-  { label: "Unit Athletic Officer", abbrev: "ATH" },
-  { label: "Unit Supply Officer", abbrev: "SUP" },
   { label: "Unit NCO", abbrev: "UNCO" },
   { label: "Platoon Sergeant", abbrev: "PS" },
   { label: "Platoon Leader", abbrev: "PL" },
@@ -136,6 +159,43 @@ export const REGIMENTAL_POSITIONS: PositionOption[] = [
 
 export const POSITIONS: PositionOption[] = [...UNIT_POSITIONS, ...BATTALION_POSITIONS, ...REGIMENTAL_POSITIONS];
 
+// Secondary/collateral duties — held in parallel with a cadet's primary
+// position and rank, not a replacement for either. No minimum rank or
+// class-year rules of their own; any cadet can hold any of these regardless
+// of primary position/rank. "Unit Guidon" rotates within Company C roughly
+// every make; "Battalion Guidon" is held by one company at a time, rotating
+// among the battalion's companies about once every 3 makes.
+export const SECONDARY_POSITIONS: PositionOption[] = [
+  { label: "Branch Insignia Officer", abbrev: "BIO" },
+  { label: "Branch Insignia NCO", abbrev: "BI-NCO" },
+  { label: "Unit Academic Officer", abbrev: "ACAD" },
+  { label: "Unit Athletic Officer", abbrev: "ATH" },
+  { label: "Unit Clerk", abbrev: "CLERK" },
+  { label: "Unit Armorer", abbrev: "U-ARM" },
+  { label: "Unit Guidon", abbrev: "U-GUIDON" },
+  { label: "Battalion Guidon", abbrev: "B-GUIDON" },
+];
+
+export function formatSecondaryPosition(position: string | null): string {
+  if (!position) return "—";
+  const found = SECONDARY_POSITIONS.find((p) => p.label === position);
+  return found ? `${found.label} (${found.abbrev})` : position;
+}
+
+// The only secondary duties with a class-year restriction: both guidon
+// bearer roles are Sophomore-only. Every other secondary duty is unrestricted.
+export const SECONDARY_POSITION_CLASS_YEARS: Record<string, ClassYear[]> = {
+  "Unit Guidon": ["Sophomore"],
+  "Battalion Guidon": ["Sophomore"],
+};
+
+export function isClassYearEligibleForSecondaryPosition(classYear: string | null, secondaryPosition: string | null): boolean {
+  if (!secondaryPosition) return true;
+  const allowed = SECONDARY_POSITION_CLASS_YEARS[secondaryPosition];
+  if (!allowed || !classYear) return true;
+  return allowed.includes(classYear as ClassYear);
+}
+
 // Cadre per the spec: Commissioned Officers, Unit Commander, Executive
 // Officer, Operations Sergeant, First Sergeant.
 //
@@ -155,8 +215,12 @@ export function formatPosition(position: string): string {
   return found ? `${found.label} (${found.abbrev})` : position;
 }
 
-// Ordered low-to-high — index in this array is the rank's seniority. Color
-// Corporal is a sophomore-tier NCO rank between Lance Corporal and Corporal.
+// Ordered low-to-high — index in this array is the rank's seniority, per the
+// Eagle Wings handbook's "Military Ranks & Insignias" chart. Color Corporal
+// is a sophomore-tier NCO rank between Lance Corporal and Corporal.
+// Operations Sergeant, First Sergeant, Sergeant Major, and Regimental
+// Sergeant Major are "acting" ranks — see ACTING_RANK_POSITIONS below — held
+// only while currently serving in the matching billet.
 export const RANKS = [
   "New Cadet",
   "Private",
@@ -165,7 +229,11 @@ export const RANKS = [
   "Color Corporal",
   "Corporal",
   "Sergeant",
-  "Sergeant 1st Class",
+  "Staff Sergeant",
+  "Operations Sergeant",
+  "First Sergeant",
+  "Sergeant Major",
+  "Regimental Sergeant Major",
   "Second Lieutenant",
   "First Lieutenant",
   "Captain",
@@ -179,7 +247,11 @@ export const RANK_ABBREVIATIONS: Record<string, string> = {
   "Color Corporal": "CCPL",
   Corporal: "CPL",
   Sergeant: "SGT",
-  "Sergeant 1st Class": "S1C",
+  "Staff Sergeant": "SSG",
+  "Operations Sergeant": "OPS",
+  "First Sergeant": "1SGT",
+  "Sergeant Major": "SGM",
+  "Regimental Sergeant Major": "RSM",
   "Second Lieutenant": "2LT",
   "First Lieutenant": "1LT",
   Captain: "CPT",
@@ -205,21 +277,14 @@ export function higherRank(a: string | null, b: string | null): string | null {
 // Minimum rank required to hold each position — mirrors worker/lib/metrics.ts.
 // Confirmed directly by Company C cadre.
 export const POSITION_MIN_RANK: Record<string, string> = {
-  "New Cadet": "New Cadet",
+  Element: "New Cadet",
   "Team Leader": "Private First Class",
   "Squad Leader": "Lance Corporal",
-  "Unit Clerk": "Private",
-  "Guidon Bearer": "Private First Class",
-  "Branch Insignia Officer": "Second Lieutenant",
-  "Branch Insignia NCO": "Corporal",
-  "Unit Academic Officer": "Lance Corporal",
-  "Unit Athletic Officer": "Lance Corporal",
-  "Unit Supply Officer": "Corporal",
   "Unit NCO": "Corporal",
-  "Platoon Sergeant": "Sergeant",
+  "Platoon Sergeant": "Sergeant", // class-year dependent in practice — see ACTING_RANK_BY_CLASS_YEAR
   "Platoon Leader": "Second Lieutenant",
-  "Operations Sergeant": "Sergeant",
-  "Unit First Sergeant": "Sergeant",
+  "Operations Sergeant": "Operations Sergeant",
+  "Unit First Sergeant": "First Sergeant",
   "Unit Executive Officer": "First Lieutenant",
   "Unit Commander": "First Lieutenant",
   "Battalion Armory Officer/NCO": "Corporal",
@@ -227,11 +292,11 @@ export const POSITION_MIN_RANK: Record<string, string> = {
   "Battalion Athletic NCO": "Corporal",
   "Battalion Operations Officer": "First Lieutenant",
   "Battalion Adjutant": "First Lieutenant",
-  "Battalion Sergeant Major": "Sergeant",
+  "Battalion Sergeant Major": "Sergeant Major",
   "Battalion Commander": "First Lieutenant",
-  "Regimental Sergeant Major": "Sergeant",
-  "Regimental Operations Sergeant Major": "Sergeant",
-  "Regimental Color Sergeant Major": "Sergeant",
+  "Regimental Sergeant Major": "Regimental Sergeant Major",
+  "Regimental Operations Sergeant Major": "Sergeant Major",
+  "Regimental Color Sergeant Major": "Sergeant Major",
   "Aide to Spiritual Life": "Sergeant",
   "Aide to Admissions": "Second Lieutenant",
   "Aide to Academics": "Sergeant",
@@ -246,14 +311,110 @@ export const POSITION_MIN_RANK: Record<string, string> = {
   "Regimental Commander": "Captain",
 };
 
+// Which class year(s) may hold each primary position, per Company C. A
+// position not listed here has no class-year restriction.
+export const POSITION_CLASS_YEARS: Record<string, ClassYear[]> = {
+  Element: ["Freshman", "Sophomore", "Junior"],
+  "Team Leader": ["Freshman", "Sophomore", "Junior", "Senior"],
+  "Squad Leader": ["Sophomore", "Junior", "Senior"],
+  "Unit NCO": ["Junior"],
+  "Platoon Sergeant": ["Junior", "Senior"],
+  "Platoon Leader": ["Senior"],
+  "Operations Sergeant": ["Junior"],
+  "Unit First Sergeant": ["Junior"],
+  "Unit Executive Officer": ["Senior"],
+  "Unit Commander": ["Senior"],
+  "Battalion Armory Officer/NCO": ["Junior"],
+  "Battalion Supply Officer": ["Senior"],
+  "Battalion Athletic NCO": ["Junior"],
+  "Battalion Operations Officer": ["Senior"],
+  "Battalion Adjutant": ["Senior"],
+  "Battalion Sergeant Major": ["Junior"],
+  "Battalion Commander": ["Senior"],
+  "Regimental Sergeant Major": ["Junior"],
+  "Regimental Operations Sergeant Major": ["Junior"],
+  "Regimental Color Sergeant Major": ["Junior"],
+  "Aide to Spiritual Life": ["Senior"],
+  "Aide to Admissions": ["Senior"],
+  "Aide to Academics": ["Senior"],
+  "Technology Officer": ["Senior"],
+  "Diversity Officer": ["Senior"],
+  "Honor Officer": ["Senior"],
+  "Drum Major": ["Senior"],
+  "Regimental Supply Officer": ["Senior"],
+  "Regimental Athletic Officer": ["Senior"],
+  "Regimental Operations Officer": ["Senior"],
+  "Regimental Adjutant": ["Senior"],
+  "Regimental Commander": ["Senior"],
+};
+
+// A cadet with no class year on file yet (e.g. legacy data predating this
+// field) is treated as unrestricted rather than ineligible.
+export function isClassYearEligibleForPosition(classYear: string | null, position: string): boolean {
+  const allowed = POSITION_CLASS_YEARS[position];
+  if (!allowed || !classYear) return true;
+  return allowed.includes(classYear as ClassYear);
+}
+
+// Operations Sergeant, Unit First Sergeant, Battalion/Regimental Sergeant
+// Major, and Regimental Operations/Color Sergeant Major are "acting" ranks:
+// unlike every other position (which sets a permanent floor you never drop
+// below), these are held only while *currently* serving in the matching
+// billet. Leaving the billet reverts to a flat "Sergeant" baseline — not
+// whatever rank the cadet held before taking the billet — before the normal
+// floor logic applies to whatever position comes next.
+export const ACTING_RANK_POSITIONS: Record<string, string> = {
+  "Operations Sergeant": "Operations Sergeant",
+  "Unit First Sergeant": "First Sergeant",
+  "Battalion Sergeant Major": "Sergeant Major",
+  "Regimental Operations Sergeant Major": "Sergeant Major",
+  "Regimental Color Sergeant Major": "Sergeant Major",
+  "Regimental Sergeant Major": "Regimental Sergeant Major",
+};
+
+// Platoon Sergeant is also an acting rank, but which one depends on the
+// cadet's class year: a Junior Platoon Sergeant is (acting) Sergeant, a
+// Senior Platoon Sergeant is (acting) Staff Sergeant.
+export const ACTING_RANK_BY_CLASS_YEAR: Record<string, Partial<Record<ClassYear, string>>> = {
+  "Platoon Sergeant": {
+    Junior: "Sergeant",
+    Senior: "Staff Sergeant",
+  },
+};
+
+function isActingPosition(position: string | null): boolean {
+  if (!position) return false;
+  return !!ACTING_RANK_POSITIONS[position] || !!ACTING_RANK_BY_CLASS_YEAR[position];
+}
+
+function actingRankFor(position: string, classYear: string | null): string | null {
+  const fixed = ACTING_RANK_POSITIONS[position];
+  if (fixed) return fixed;
+  const byClass = ACTING_RANK_BY_CLASS_YEAR[position];
+  if (byClass && classYear) return byClass[classYear as ClassYear] ?? null;
+  return null;
+}
+
 /**
- * The rank a cadet should hold after being appointed to `position`, given
- * their current rank: whichever is higher of current rank and the
- * position's minimum. Never returns a lower rank than `currentRank`.
+ * The rank a cadet should hold after being appointed to `newPosition`, given
+ * their current rank, class year, and the position they're moving from
+ * (`oldPosition`, null for a brand-new cadet). See ACTING_RANK_POSITIONS /
+ * ACTING_RANK_BY_CLASS_YEAR for the exception to the normal "never demotes"
+ * rule.
  */
-export function rankAfterPositionChange(currentRank: string | null, position: string): string {
-  const minimum = POSITION_MIN_RANK[position] ?? "New Cadet";
-  return higherRank(currentRank, minimum) ?? minimum;
+export function rankAfterPositionChange(
+  currentRank: string | null,
+  oldPosition: string | null,
+  newPosition: string,
+  classYear: string | null,
+): string {
+  const newActingRank = actingRankFor(newPosition, classYear);
+  if (newActingRank) return newActingRank;
+
+  const wasActing = isActingPosition(oldPosition);
+  const baseline = wasActing ? "Sergeant" : currentRank;
+  const minimum = POSITION_MIN_RANK[newPosition] ?? "New Cadet";
+  return higherRank(baseline, minimum) ?? minimum;
 }
 
 export interface Cadet {
@@ -262,8 +423,13 @@ export interface Cadet {
   last_name: string;
   position: string;
   rank: string | null;
+  class_year: string | null;
+  secondary_position: string | null;
   is_cadre: boolean;
   negative_count?: number;
+  team_leader_id: number | null;
+  squad_leader_id: number | null;
+  platoon_leader_id: number | null;
 }
 
 export interface MetricEntry {
@@ -279,4 +445,110 @@ export interface MetricEntry {
 
 export interface CadetProfile extends Cadet {
   metric_entries: MetricEntry[];
+  team_leader_name: string | null;
+  squad_leader_name: string | null;
+  platoon_leader_name: string | null;
+}
+
+// The Military Banner: a weekly, regiment-wide competition scored on
+// discipline/barracks/uniform standards — lowest gigs wins. Company C tracks
+// two derived standings from that same weekly result: Battalion Banner (rank
+// among the 3 Infantry companies, weighted on Daily Room Inspection +
+// Battalion Inspection Gigs) and Regimental Banner (rank among all 9 units,
+// weighted on Regimental Inspection Gigs, Laundry Gigs, DC's, and Battalion
+// Banner placement). Weighting/scoring happens outside this app — entries
+// here are cadre's manual record of the announced weekly result.
+export const MAKE_NUMBERS = [1, 2, 3];
+
+export const BATTALION_UNIT_COUNT = 3; // Companies A, B, C
+export const REGIMENTAL_UNIT_COUNT = 9; // 3 Infantry companies + 3 Artillery batteries + Band + 2 Cavalry troops
+
+export interface BannerResult {
+  id: number;
+  entry_date: string;
+  make_number: number | null;
+  battalion_rank: number | null;
+  battalion_score: number | null;
+  regimental_rank: number | null;
+  regimental_score: number | null;
+  note: string | null;
+}
+
+// Small-unit organization: Company C is broken into Teams, Squads, and
+// Platoons, each named after the cadet currently holding the corresponding
+// leader billet. Only the positions below participate — everyone else (Unit
+// NCO and up, and all Battalion/Regimental staff) sits outside the system
+// entirely. A cadet holding a unit's leader billet always *is* that unit
+// (self-assigned server-side); every other eligible position picks which
+// leader's unit they belong to via a dropdown.
+export type UnitType = "team" | "squad" | "platoon";
+
+export const UNIT_TYPES: UnitType[] = ["team", "squad", "platoon"];
+
+export const UNIT_TYPE_LABELS: Record<UnitType, string> = {
+  team: "Team",
+  squad: "Squad",
+  platoon: "Platoon",
+};
+
+// The position that defines (leads, and lends its name to) each unit type.
+export const LEADER_POSITION_FOR_UNIT: Record<UnitType, string> = {
+  team: "Team Leader",
+  squad: "Squad Leader",
+  platoon: "Platoon Leader",
+};
+
+const TEAM_ELIGIBLE_POSITIONS = new Set(["Element", "Team Leader"]);
+const SQUAD_ELIGIBLE_POSITIONS = new Set(["Element", "Team Leader", "Squad Leader"]);
+const PLATOON_ELIGIBLE_POSITIONS = new Set([
+  "Element",
+  "Team Leader",
+  "Squad Leader",
+  "Platoon Sergeant",
+  "Platoon Leader",
+]);
+
+export function isTeamEligible(position: string): boolean {
+  return TEAM_ELIGIBLE_POSITIONS.has(position);
+}
+
+export function isSquadEligible(position: string): boolean {
+  return SQUAD_ELIGIBLE_POSITIONS.has(position);
+}
+
+export function isPlatoonEligible(position: string): boolean {
+  return PLATOON_ELIGIBLE_POSITIONS.has(position);
+}
+
+export const UNIT_ELIGIBILITY: Record<UnitType, (position: string) => boolean> = {
+  team: isTeamEligible,
+  squad: isSquadEligible,
+  platoon: isPlatoonEligible,
+};
+
+export const UNIT_LEADER_FIELD: Record<UnitType, "team_leader_id" | "squad_leader_id" | "platoon_leader_id"> = {
+  team: "team_leader_id",
+  squad: "squad_leader_id",
+  platoon: "platoon_leader_id",
+};
+
+export interface UnitSummary {
+  leader: Cadet;
+  members: Cadet[];
+  metric_totals: Record<MetricType, number>;
+  negative_total: number;
+}
+
+export interface UnitCompilation {
+  units: UnitSummary[];
+  unassigned: Cadet[];
+}
+
+export interface UnitAward {
+  id: number;
+  entry_date: string;
+  unit_type: UnitType;
+  leader_cadet_id: number;
+  leader_name: string;
+  note: string | null;
 }

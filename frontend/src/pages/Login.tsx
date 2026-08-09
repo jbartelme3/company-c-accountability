@@ -52,10 +52,6 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-xl">
         <h1 className="text-lg font-bold text-slate-900">Company C Accountability</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Cadre only (Commissioned Officers, Unit Commander, Executive Officer, Operations Sergeant, First Sergeant). Enter
-          the site password to continue.
-        </p>
 
         <label className="mt-6 block text-sm font-medium text-slate-700" htmlFor="password">
           Password
