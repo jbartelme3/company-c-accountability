@@ -88,9 +88,9 @@ function Row({ type, entry, onChanged }: { type: MetricType; entry: MetricEntry;
         {error && <p className="text-xs text-red-600">{error}</p>}
       </td>
       {type === "laundry_gig" && (
-        <td className="py-2 pr-3 text-slate-600">{entry.laundry_type ? LAUNDRY_TYPE_LABELS[entry.laundry_type] : "—"}</td>
+        <td className="py-2 pr-3 text-slate-600">{entry.laundry_type ? LAUNDRY_TYPE_LABELS[entry.laundry_type] : "-"}</td>
       )}
-      <td className="py-2 pr-3 text-slate-500">{entry.note ?? "—"}</td>
+      <td className="py-2 pr-3 text-slate-500">{entry.note ?? "-"}</td>
       <td className="py-2 pr-3 text-right">
         <button onClick={remove} disabled={busy} className="text-xs font-medium text-slate-400 hover:text-red-600">
           Remove

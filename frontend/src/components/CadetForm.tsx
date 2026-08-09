@@ -323,7 +323,7 @@ function UnitAssignmentField({
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
           className="mt-1 w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
         >
-          <option value="">— Unassigned —</option>
+          <option value="">Unassigned</option>
           {leaders.map((l) => (
             <option key={l.id} value={l.id}>
               {l.first_name} {l.last_name}'s {UNIT_TYPE_LABELS[unitType]}

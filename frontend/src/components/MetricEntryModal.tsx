@@ -73,7 +73,7 @@ export default function MetricEntryModal({
       <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-slate-900">
-            {METRIC_LABELS[type]} — {cadetName}
+            {METRIC_LABELS[type]} · {cadetName}
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
             ✕

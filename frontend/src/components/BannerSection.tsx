@@ -61,8 +61,8 @@ export default function BannerSection({ results, onChanged }: { results: BannerR
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <StatTile label="Battalion Banner wins" value={`${battalionWins} of ${results.filter((r) => r.battalion_rank != null).length}`} />
         <StatTile label="Regimental Banner wins" value={`${regimentalWins} of ${results.filter((r) => r.regimental_rank != null).length}`} />
-        <StatTile label="Average battalion rank" value={avgBattalion != null ? `#${avgBattalion.toFixed(1)} of 3` : "—"} />
-        <StatTile label="Average regimental rank" value={avgRegimental != null ? `#${avgRegimental.toFixed(1)} of 9` : "—"} />
+        <StatTile label="Average battalion rank" value={avgBattalion != null ? `#${avgBattalion.toFixed(1)} of 3` : "-"} />
+        <StatTile label="Average regimental rank" value={avgRegimental != null ? `#${avgRegimental.toFixed(1)} of 9` : "-"} />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -96,12 +96,12 @@ export default function BannerSection({ results, onChanged }: { results: BannerR
               {results.map((r) => (
                 <tr key={r.id} className="border-b border-slate-100">
                   <td className="px-4 py-2 text-slate-800">{r.entry_date}</td>
-                  <td className="px-4 py-2 text-slate-600">{r.make_number ?? "—"}</td>
-                  <td className="px-4 py-2 text-slate-600">{r.battalion_rank != null ? `#${r.battalion_rank}` : "—"}</td>
-                  <td className="px-4 py-2 text-slate-600">{r.battalion_score ?? "—"}</td>
-                  <td className="px-4 py-2 text-slate-600">{r.regimental_rank != null ? `#${r.regimental_rank}` : "—"}</td>
-                  <td className="px-4 py-2 text-slate-600">{r.regimental_score ?? "—"}</td>
-                  <td className="px-4 py-2 text-slate-500">{r.note ?? "—"}</td>
+                  <td className="px-4 py-2 text-slate-600">{r.make_number ?? "-"}</td>
+                  <td className="px-4 py-2 text-slate-600">{r.battalion_rank != null ? `#${r.battalion_rank}` : "-"}</td>
+                  <td className="px-4 py-2 text-slate-600">{r.battalion_score ?? "-"}</td>
+                  <td className="px-4 py-2 text-slate-600">{r.regimental_rank != null ? `#${r.regimental_rank}` : "-"}</td>
+                  <td className="px-4 py-2 text-slate-600">{r.regimental_score ?? "-"}</td>
+                  <td className="px-4 py-2 text-slate-500">{r.note ?? "-"}</td>
                   <td className="px-4 py-2 text-right">
                     <button onClick={() => remove(r.id)} className="text-xs font-medium text-slate-400 hover:text-red-600">
                       Remove

@@ -40,7 +40,7 @@ export default function UnitTab({ unitType }: { unitType: UnitType }) {
 
         {data.units.length === 0 ? (
           <p className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-400">
-            No {leaderPosition} on the roster yet — add one from the Cadets tab to start a {label.toLowerCase()}.
+            No {leaderPosition} on the roster yet. Add one from the Cadets tab to start a {label.toLowerCase()}.
           </p>
         ) : (
           <div className="space-y-3">

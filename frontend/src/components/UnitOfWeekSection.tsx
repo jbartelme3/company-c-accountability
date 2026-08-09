@@ -56,7 +56,7 @@ export default function UnitOfWeekSection({
 
       {leaders.length === 0 && (
         <p className="text-sm text-slate-400">
-          No {LEADER_HELP_TEXT[unitType]} on the roster yet — there's nothing to record a winner for.
+          No {LEADER_HELP_TEXT[unitType]} on the roster yet. Nothing to record a winner for.
         </p>
       )}
 
@@ -87,7 +87,7 @@ export default function UnitOfWeekSection({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <StatTile label="Weeks logged" value={String(awards.length)} />
-        <StatTile label="Most wins" value={topWinnerName ? `${topWinnerName} (${topWinner![1]})` : "—"} />
+        <StatTile label="Most wins" value={topWinnerName ? `${topWinnerName} (${topWinner![1]})` : "-"} />
       </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -115,7 +115,7 @@ export default function UnitOfWeekSection({
                   <td className="px-4 py-2 text-slate-600">
                     {a.leader_name}'s {label}
                   </td>
-                  <td className="px-4 py-2 text-slate-500">{a.note ?? "—"}</td>
+                  <td className="px-4 py-2 text-slate-500">{a.note ?? "-"}</td>
                   <td className="px-4 py-2 text-right">
                     <button onClick={() => remove(a.id)} className="text-xs font-medium text-slate-400 hover:text-red-600">
                       Remove

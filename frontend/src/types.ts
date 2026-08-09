@@ -90,7 +90,7 @@ export const CLASSMAN_LABELS: Record<ClassYear, string> = {
 };
 
 export function formatClassYear(classYear: string | null): string {
-  if (!classYear) return "—";
+  if (!classYear) return "-";
   const label = CLASSMAN_LABELS[classYear as ClassYear];
   return label ? `${classYear} (${label})` : classYear;
 }
@@ -177,7 +177,7 @@ export const SECONDARY_POSITIONS: PositionOption[] = [
 ];
 
 export function formatSecondaryPosition(position: string | null): string {
-  if (!position) return "—";
+  if (!position) return "-";
   const found = SECONDARY_POSITIONS.find((p) => p.label === position);
   return found ? `${found.label} (${found.abbrev})` : position;
 }
@@ -258,7 +258,7 @@ export const RANK_ABBREVIATIONS: Record<string, string> = {
 };
 
 export function formatRank(rank: string | null): string {
-  if (!rank) return "—";
+  if (!rank) return "-";
   const abbrev = RANK_ABBREVIATIONS[rank];
   return abbrev ? `${rank} (${abbrev})` : rank;
 }

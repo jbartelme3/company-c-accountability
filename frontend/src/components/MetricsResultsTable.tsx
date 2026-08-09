@@ -3,7 +3,7 @@ import { LAUNDRY_TYPE_LABELS, METRIC_LABELS, formatPosition } from "../types";
 
 function typeLabel(entry: MetricEntry): string {
   if (entry.type === "laundry_gig" && entry.laundry_type) {
-    return `${METRIC_LABELS[entry.type]} — ${LAUNDRY_TYPE_LABELS[entry.laundry_type]}`;
+    return `${METRIC_LABELS[entry.type]} · ${LAUNDRY_TYPE_LABELS[entry.laundry_type]}`;
   }
   return METRIC_LABELS[entry.type];
 }
@@ -38,8 +38,8 @@ export default function MetricsResultsTable({
               <td className="py-2 pr-3 text-slate-800">{entry.entry_date}</td>
               <td className="py-2 pr-3 text-slate-600">{typeLabel(entry)}</td>
               <td className="py-2 pr-3 text-slate-800">{entry.cadet_name}</td>
-              <td className="py-2 pr-3 text-slate-500">{entry.cadet_position ? formatPosition(entry.cadet_position) : "—"}</td>
-              <td className="py-2 pr-3 text-slate-500">{entry.note ?? "—"}</td>
+              <td className="py-2 pr-3 text-slate-500">{entry.cadet_position ? formatPosition(entry.cadet_position) : "-"}</td>
+              <td className="py-2 pr-3 text-slate-500">{entry.note ?? "-"}</td>
               <td className="py-2 pr-3 text-right">
                 <button onClick={() => onRemove(entry)} className="text-xs font-medium text-slate-400 hover:text-red-600">
                   Remove
