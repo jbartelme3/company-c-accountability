@@ -5,6 +5,7 @@ import type {
   ConductGigReport,
   LaundryType,
   LineupGigType,
+  MakePeriod,
   MetricEntry,
   MetricType,
   NewCadetStanding,
@@ -117,6 +118,12 @@ export const unitAwardsApi = {
   update: (id: number, data: Partial<{ entry_date: string; leader_cadet_id: number; note: string | null }>) =>
     request<UnitAward>(`/api/unit-awards/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: number) => request<void>(`/api/unit-awards/${id}`, { method: "DELETE" }),
+};
+
+export const makePeriodsApi = {
+  list: () => request<MakePeriod[]>("/api/make-periods"),
+  upsert: (makeNumber: number, data: { start_date: string; end_date: string }) =>
+    request<MakePeriod>(`/api/make-periods/${makeNumber}`, { method: "PUT", body: JSON.stringify(data) }),
 };
 
 export const bannersApi = {

@@ -21,7 +21,11 @@ export type MetricType =
   | "positive_epr"
   | "negative_epr"
   | "dc"
-  | "new_cadet_lineup_gig";
+  | "new_cadet_lineup_gig"
+  | "brc_inspection_gig"
+  | "drc_inspection_gig"
+  | "atv"
+  | "other";
 
 export const METRIC_TYPES: MetricType[] = [
   "work_detail",
@@ -36,6 +40,10 @@ export const METRIC_TYPES: MetricType[] = [
   "negative_epr",
   "dc",
   "new_cadet_lineup_gig",
+  "brc_inspection_gig",
+  "drc_inspection_gig",
+  "atv",
+  "other",
 ];
 
 export const METRIC_LABELS: Record<MetricType, string> = {
@@ -43,14 +51,21 @@ export const METRIC_LABELS: Record<MetricType, string> = {
   haircut: "In-Unit Haircut",
   laundry_gig: "Laundry Gig",
   absence: "Absence",
-  daily_room_inspection_gig: "Daily Room Inspection Gig",
-  battalion_inspection_gig: "Battalion Inspection Gig",
+  daily_room_inspection_gig: "Room Inspection",
+  // Retired — replaced by BRC/DRC Gigs. Kept only so historical rows still
+  // have a label; never offered for new entries (see METRIC_TYPE_ORDER in
+  // frontend/src/types.ts).
+  battalion_inspection_gig: "Battalion Inspection Gig (legacy)",
   major_green_inspection_gig: "Major Green Inspection Gig",
   regimental_inspection_gig: "Regimental Inspection Gig",
   positive_epr: "Positive EPR",
   negative_epr: "Negative EPR",
   dc: "DC's (Disciplinary Confinement)",
   new_cadet_lineup_gig: "New Cadet Lineup Gig",
+  brc_inspection_gig: "BRC Gig",
+  drc_inspection_gig: "DRC Gig",
+  atv: "ATV",
+  other: "Other",
 };
 
 // Purely cosmetic (badge color / quick-scan) grouping of whether an entry
@@ -70,7 +85,45 @@ export const METRIC_POLARITY: Record<MetricType, Polarity> = {
   negative_epr: "negative",
   dc: "negative",
   new_cadet_lineup_gig: "negative",
+  brc_inspection_gig: "negative",
+  drc_inspection_gig: "negative",
+  atv: "negative",
+  other: "neutral",
 };
+
+// How many "gigs" a single entry of this type is worth — the weighting the
+// Military Banner ("lowest gigs wins") is actually scored on. Used both to
+// display weighted totals (Unit Performance tab charts/tables) and to
+// compute the auto Team/Squad/Platoon of the Week/Month/Make standings (see
+// frontend/src/lib/gigScore.ts). A type with no entry here isn't part of the
+// gig-scoring system at all: haircut/positive_epr/negative_epr are
+// informational ("Extra"), new_cadet_lineup_gig has its own separate
+// per-sub-type weighting (LINEUP_GIG_TYPE_WEIGHT below) and is explicitly
+// excluded from team/squad/platoon standings, and battalion_inspection_gig
+// is retired.
+export const METRIC_GIG_WEIGHT: Partial<Record<MetricType, number>> = {
+  daily_room_inspection_gig: 1,
+  brc_inspection_gig: 3,
+  drc_inspection_gig: 3,
+  regimental_inspection_gig: 3,
+  laundry_gig: 3,
+  major_green_inspection_gig: 3,
+  dc: 3,
+  atv: 3,
+  work_detail: 1,
+  other: 1,
+  absence: 1,
+};
+
+/** How many gigs one entry of `type` is worth — 1 for any type not in METRIC_GIG_WEIGHT (a plain count). */
+export function gigWeight(type: MetricType): number {
+  return METRIC_GIG_WEIGHT[type] ?? 1;
+}
+
+/** Whether `type` counts toward the auto gig-scoring standings (Team/Squad/Platoon of the Week/Month/Make). */
+export function isGigScored(type: MetricType): boolean {
+  return type in METRIC_GIG_WEIGHT;
+}
 
 // Mixed Laundry and Dry Cleaning are sub-types of a Laundry Gig, not their own
 // metric categories — every laundry_gig entry must specify which one it is.

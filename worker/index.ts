@@ -10,6 +10,7 @@ import { unitAwards } from "./routes/unit-awards";
 import { newCadets } from "./routes/new-cadets";
 import { rankHistory } from "./routes/rank-history";
 import { conductGigReports } from "./routes/conduct-gig-reports";
+import { makePeriods } from "./routes/make-periods";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -130,6 +131,7 @@ app.route("/api/unit-awards", unitAwards);
 app.route("/api/new-cadets", newCadets);
 app.route("/api/rank-history", rankHistory);
 app.route("/api/conduct-gig-reports", conductGigReports);
+app.route("/api/make-periods", makePeriods);
 
 app.notFound((c) => c.json({ error: "Not found" }, 404));
 

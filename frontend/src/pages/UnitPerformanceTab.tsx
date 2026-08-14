@@ -1,47 +1,73 @@
 import { useEffect, useState } from "react";
-import { bannersApi, metricsApi } from "../api/client";
-import type { BannerResult, MetricEntry, MetricType } from "../types";
-import { METRIC_LABELS } from "../types";
+import { bannersApi, makePeriodsApi, metricsApi } from "../api/client";
+import type { BannerResult, MakePeriod, MetricEntry, MetricType } from "../types";
+import { METRIC_LABELS, gigWeight, lineupGigWeight } from "../types";
 import { CATEGORICAL_COLORS } from "../lib/chartPalette";
 import { buildWeeklySeries } from "../lib/weeklyBucket";
 import MetricsTrendChart from "../components/MetricsTrendChart";
 import BannerSection from "../components/BannerSection";
+import MakePeriodsEditor from "../components/MakePeriodsEditor";
 
 // Grouped into small multiples — a single chart with 12 series would blow
 // past the categorical palette's safe cap (8), so metrics are split into
-// facets of at most 6, each recoloring from the same 8-slot palette.
-const FACETS: { title: string; types: MetricType[] }[] = [
+// facets of at most 6, each recoloring from the same 8-slot palette. Every
+// facet is scoped to real gig categories/weights (see gigWeight in
+// types.ts) rather than the old flat "Discipline"/"Inspections" grouping.
+const FACETS: { title: string; types: MetricType[]; subtitle?: string }[] = [
   {
-    title: "Inspections",
-    types: [
-      "daily_room_inspection_gig",
-      "battalion_inspection_gig",
-      "major_green_inspection_gig",
-      "regimental_inspection_gig",
-      "laundry_gig",
-    ],
+    title: "Room Inspection Gigs",
+    types: ["daily_room_inspection_gig"],
+    subtitle: "Each entry counts as 1 gig.",
   },
   {
-    title: "Discipline",
-    types: ["absence", "negative_epr", "dc", "work_detail", "haircut", "new_cadet_lineup_gig"],
+    title: "Inspection (BRC/DRC/Reg/Laundry/Major) Gigs",
+    types: ["brc_inspection_gig", "drc_inspection_gig", "regimental_inspection_gig", "laundry_gig", "major_green_inspection_gig"],
+    subtitle: "Each entry counts as 3 gigs.",
   },
   {
-    title: "Recognition",
-    types: ["positive_epr"],
+    title: "Disciplinary Gigs",
+    types: ["dc", "atv"],
+    subtitle: "Each entry counts as 3 gigs.",
+  },
+  {
+    title: "Work Details",
+    types: ["work_detail"],
+    subtitle: "Each entry counts as 1 gig.",
+  },
+  {
+    title: "Other",
+    types: ["other"],
+    subtitle: "Each entry counts as 1 gig.",
+  },
+  {
+    title: "Absences",
+    types: ["absence"],
+  },
+  {
+    title: "Extra",
+    types: ["positive_epr", "negative_epr", "haircut"],
+    subtitle: "Informational — not part of gig standings.",
+  },
+  {
+    title: "New Cadet Lineup Gigs",
+    types: ["new_cadet_lineup_gig"],
+    subtitle: "Conduct Gigs count as 3, everything else as 1. Excluded from Team/Squad/Platoon standings.",
   },
 ];
 
 export default function UnitPerformanceTab() {
   const [entries, setEntries] = useState<MetricEntry[]>([]);
   const [banners, setBanners] = useState<BannerResult[]>([]);
+  const [makePeriods, setMakePeriods] = useState<MakePeriod[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     try {
-      const [entriesData, bannersData] = await Promise.all([metricsApi.list(), bannersApi.list()]);
+      const [entriesData, bannersData, periods] = await Promise.all([metricsApi.list(), bannersApi.list(), makePeriodsApi.list()]);
       setEntries(entriesData);
       setBanners(bannersData);
+      setMakePeriods(periods);
     } finally {
       setLoading(false);
     }
@@ -57,6 +83,8 @@ export default function UnitPerformanceTab() {
 
   return (
     <div className="space-y-8">
+      <MakePeriodsEditor periods={makePeriods} onChanged={load} />
+
       <div className="space-y-3">
         <h2 className="text-lg font-bold text-slate-900">Cadet Metrics Over Time</h2>
         <div className="space-y-4">
@@ -65,9 +93,16 @@ export default function UnitPerformanceTab() {
             const series = buildWeeklySeries(
               facetEntries,
               (e) => e.type,
-              facet.types.map((type, i) => ({ key: type, label: METRIC_LABELS[type], color: CATEGORICAL_COLORS[i] })),
+              facet.types.map((type, i) => ({
+                key: type,
+                label: METRIC_LABELS[type],
+                color: CATEGORICAL_COLORS[i],
+                // New Cadet Lineup Gigs weight per-entry (Conduct Gig = 3,
+                // others = 1); every other facet weights by type.
+                weight: type === "new_cadet_lineup_gig" ? (e: MetricEntry) => lineupGigWeight(e.lineup_gig_type) : gigWeight(type),
+              })),
             );
-            return <MetricsTrendChart key={facet.title} title={facet.title} series={series} />;
+            return <MetricsTrendChart key={facet.title} title={facet.title} subtitle={facet.subtitle} series={series} />;
           })}
         </div>
       </div>

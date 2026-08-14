@@ -11,7 +11,15 @@ function formatWeek(week: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export default function MetricsTrendChart({ title, series }: { title: string; series: WeeklySeries[] }) {
+export default function MetricsTrendChart({
+  title,
+  subtitle,
+  series,
+}: {
+  title: string;
+  subtitle?: string;
+  series: WeeklySeries[];
+}) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
 
@@ -46,8 +54,11 @@ export default function MetricsTrendChart({ title, series }: { title: string; se
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+      <div className="mb-2 flex items-start justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+          {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
+        </div>
         <button onClick={() => setShowTable((v) => !v)} className="text-xs font-medium text-slate-500 hover:text-slate-800">
           {showTable ? "Show chart" : "Show table"}
         </button>

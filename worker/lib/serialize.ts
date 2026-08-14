@@ -1,4 +1,4 @@
-import type { BannerResultRow, CadetRow, ConductGigReportRow, MetricEntryRow, RankHistoryRow, UnitAwardRow } from "../types";
+import type { BannerResultRow, CadetRow, ConductGigReportRow, MakePeriodRow, MetricEntryRow, RankHistoryRow, UnitAwardRow } from "../types";
 import { isCadre } from "./metrics";
 
 export function serializeCadet(row: CadetRow) {
@@ -75,5 +75,13 @@ export function serializeConductGigReport(row: ConductGigReportRow & { cadet_fir
     reasoning: row.reasoning,
     source: row.source,
     created_at: row.created_at,
+  };
+}
+
+export function serializeMakePeriod(row: MakePeriodRow) {
+  return {
+    make_number: row.make_number,
+    start_date: row.start_date,
+    end_date: row.end_date,
   };
 }

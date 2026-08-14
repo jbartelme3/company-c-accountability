@@ -2,7 +2,7 @@
 // This is a simplification of the handbook's actual evaluation periods
 // (Sun-Sat in fall/spring, Wed-Tue in winter) — close enough for a trend line.
 
-function startOfIsoWeek(dateStr: string): string {
+export function startOfIsoWeek(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
   const day = d.getDay(); // 0 = Sunday
   const diff = day === 0 ? -6 : 1 - day; // shift back to Monday
@@ -20,27 +20,37 @@ export interface WeeklySeries {
 /**
  * Given a list of {type, entry_date} items and a set of {key,label,color}
  * series definitions, buckets counts per ISO week per series, filling zero
- * weeks in between so lines don't skip gaps.
+ * weeks in between so lines don't skip gaps. `weight` (default 1) lets a
+ * series plot a weighted gig total instead of a raw entry count — either a
+ * flat multiplier (e.g. every Inspection Gig entry counts as 3) or a
+ * per-entry function (e.g. New Cadet Lineup Gigs, where a Conduct Gig
+ * entry is worth more than the others — see lineupGigWeight in types.ts).
  */
 export function buildWeeklySeries<T extends { entry_date: string }>(
   entries: T[],
   getKey: (entry: T) => string,
-  seriesDefs: { key: string; label: string; color: string }[],
+  seriesDefs: { key: string; label: string; color: string; weight?: number | ((entry: T) => number) }[],
 ): WeeklySeries[] {
   if (entries.length === 0) {
     return seriesDefs.map((s) => ({ ...s, points: [] }));
   }
 
-  const counts = new Map<string, Map<string, number>>(); // week -> key -> count
+  const counts = new Map<string, Map<string, number>>(); // week -> key -> weighted count
   let minWeek = "";
   let maxWeek = "";
+
+  const weightFor = (key: string, entry: T): number => {
+    const def = seriesDefs.find((s) => s.key === key);
+    const w = def?.weight;
+    return typeof w === "function" ? w(entry) : (w ?? 1);
+  };
 
   for (const entry of entries) {
     const week = startOfIsoWeek(entry.entry_date);
     const key = getKey(entry);
     if (!counts.has(week)) counts.set(week, new Map());
     const weekMap = counts.get(week)!;
-    weekMap.set(key, (weekMap.get(key) ?? 0) + 1);
+    weekMap.set(key, (weekMap.get(key) ?? 0) + weightFor(key, entry));
     if (!minWeek || week < minWeek) minWeek = week;
     if (!maxWeek || week > maxWeek) maxWeek = week;
   }

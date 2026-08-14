@@ -49,13 +49,20 @@ CREATE TABLE IF NOT EXISTS metric_entries (
       'laundry_gig',
       'absence',
       'daily_room_inspection_gig',
+      -- Retired — replaced by brc_inspection_gig/drc_inspection_gig below.
+      -- Kept as a valid value only so any pre-existing rows don't break; no
+      -- longer offered anywhere in the UI for new entries.
       'battalion_inspection_gig',
       'major_green_inspection_gig',
       'regimental_inspection_gig',
       'positive_epr',
       'negative_epr',
       'dc',
-      'new_cadet_lineup_gig'
+      'new_cadet_lineup_gig',
+      'brc_inspection_gig',
+      'drc_inspection_gig',
+      'atv',
+      'other'
     )
   ),
   -- Only set (and required) when type = 'laundry_gig': Mixed Laundry and Dry
@@ -154,6 +161,18 @@ CREATE TABLE IF NOT EXISTS conduct_gig_reports (
 
 CREATE INDEX IF NOT EXISTS idx_conduct_reports_cadet ON conduct_gig_reports (cadet_id);
 CREATE INDEX IF NOT EXISTS idx_conduct_reports_date ON conduct_gig_reports (entry_date);
+
+-- Make Periods: cadre-configured start/end date for each of the 3 makes per
+-- school year, so gig totals can be auto-bucketed by make for the
+-- Team/Squad/Platoon of the Make standings (see worker/routes/make-periods.ts
+-- and frontend/src/lib/periods.ts). Not set until cadre fills it in via the
+-- Unit Performance tab.
+CREATE TABLE IF NOT EXISTS make_periods (
+  make_number INTEGER PRIMARY KEY CHECK (make_number IN (1, 2, 3)),
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
 -- Tracks failed login attempts per IP for the shared-password gate. After 5
 -- failed attempts, the IP is locked and a verification code is emailed to the

@@ -69,3 +69,10 @@ export interface ConductGigReportRow {
   source: string;
   created_at: string;
 }
+
+export interface MakePeriodRow {
+  make_number: number;
+  start_date: string;
+  end_date: string;
+  updated_at: string;
+}

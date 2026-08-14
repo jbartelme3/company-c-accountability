@@ -1,21 +1,31 @@
 import { useEffect, useState } from "react";
-import { unitAwardsApi, unitsApi } from "../api/client";
-import type { UnitAward, UnitCompilation, UnitType } from "../types";
+import { makePeriodsApi, metricsApi, unitAwardsApi, unitsApi } from "../api/client";
+import type { MakePeriod, MetricEntry, UnitAward, UnitCompilation, UnitType } from "../types";
 import { LEADER_POSITION_FOR_UNIT, UNIT_TYPE_LABELS } from "../types";
 import UnitCard from "../components/UnitCard";
 import UnitOfWeekSection from "../components/UnitOfWeekSection";
+import AutoStandingsSection from "../components/AutoStandingsSection";
 
 export default function UnitTab({ unitType }: { unitType: UnitType }) {
   const [data, setData] = useState<UnitCompilation | null>(null);
   const [awards, setAwards] = useState<UnitAward[]>([]);
+  const [entries, setEntries] = useState<MetricEntry[]>([]);
+  const [makePeriods, setMakePeriods] = useState<MakePeriod[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     try {
-      const [compiled, awardList] = await Promise.all([unitsApi.compile(unitType), unitAwardsApi.list(unitType)]);
+      const [compiled, awardList, entryList, periods] = await Promise.all([
+        unitsApi.compile(unitType),
+        unitAwardsApi.list(unitType),
+        metricsApi.list(),
+        makePeriodsApi.list(),
+      ]);
       setData(compiled);
       setAwards(awardList);
+      setEntries(entryList);
+      setMakePeriods(periods);
     } finally {
       setLoading(false);
     }
@@ -63,6 +73,8 @@ export default function UnitTab({ unitType }: { unitType: UnitType }) {
           </div>
         )}
       </div>
+
+      <AutoStandingsSection unitType={unitType} units={data.units} entries={entries} makePeriods={makePeriods} />
 
       <UnitOfWeekSection unitType={unitType} awards={awards} leaders={data.units.map((u) => u.leader)} onChanged={load} />
     </div>

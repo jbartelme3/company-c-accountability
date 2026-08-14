@@ -14,7 +14,12 @@ import {
 
 export const units = new Hono<{ Bindings: Env }>();
 
-const NEGATIVE_TYPES = METRIC_TYPES.filter((t) => METRIC_POLARITY[t] === "negative");
+// New Cadet Lineup Gigs are their own separate system (see
+// worker/routes/new-cadets.ts) and, per product decision, should never show
+// up in or affect Team/Squad/Platoon standings — excluded from both the
+// per-member "flagged" count and the per-unit metric totals below.
+const UNIT_METRIC_TYPES = METRIC_TYPES.filter((t) => t !== "new_cadet_lineup_gig");
+const NEGATIVE_TYPES = UNIT_METRIC_TYPES.filter((t) => METRIC_POLARITY[t] === "negative");
 const NEGATIVE_IN_CLAUSE = NEGATIVE_TYPES.map(() => "?").join(", ");
 
 const SELECT_CADETS_WITH_NEGATIVE_COUNT = `
@@ -33,7 +38,7 @@ function serializeCadetWithCount(row: CadetRowWithCount) {
 
 function emptyMetricTotals(): Record<MetricType, number> {
   const totals = {} as Record<MetricType, number>;
-  for (const t of METRIC_TYPES) totals[t] = 0;
+  for (const t of UNIT_METRIC_TYPES) totals[t] = 0;
   return totals;
 }
 
@@ -87,7 +92,7 @@ units.get("/:type", async (c) => {
       negative_total += member.negative_count ?? 0;
       const memberTotals = metricsByCadet.get(member.id);
       if (!memberTotals) continue;
-      for (const t of METRIC_TYPES) metric_totals[t] += memberTotals[t] ?? 0;
+      for (const t of UNIT_METRIC_TYPES) metric_totals[t] += memberTotals[t] ?? 0;
     }
     return { leader, members, metric_totals, negative_total };
   });
