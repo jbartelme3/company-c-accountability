@@ -9,6 +9,7 @@ import { units } from "./routes/units";
 import { unitAwards } from "./routes/unit-awards";
 import { newCadets } from "./routes/new-cadets";
 import { rankHistory } from "./routes/rank-history";
+import { conductGigReports } from "./routes/conduct-gig-reports";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -59,6 +60,55 @@ app.post("/api/logout", (c) => {
   return c.json({ ok: true });
 });
 
+// Public webhook: not session-protected (an external Power Automate flow
+// can't hold a cookie), gated on a shared secret instead. Registered ahead
+// of the /api/* session middleware below, same as the login endpoints.
+// Intended for a Microsoft Forms -> Power Automate -> HTTP POST bridge that
+// cadre sets up separately (see README instructions) — this app has no
+// direct Microsoft Forms integration of its own.
+app.post("/api/webhooks/conduct-gig-report", async (c) => {
+  const secret = c.req.query("secret") ?? c.req.header("x-webhook-secret");
+  if (!secret || secret !== c.env.CONDUCT_REPORT_WEBHOOK_SECRET) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const body = await c.req
+    .json<{ reporter_name?: string; cadet_name?: string; entry_date?: string; reasoning?: string }>()
+    .catch(() => ({}) as Record<string, never>);
+
+  if (!body.reporter_name?.trim()) return c.json({ error: "reporter_name is required" }, 400);
+  if (!body.cadet_name?.trim()) return c.json({ error: "cadet_name is required" }, 400);
+  if (!body.reasoning?.trim()) return c.json({ error: "reasoning is required" }, 400);
+
+  const { DB } = c.env;
+  const needle = body.cadet_name.trim().toLowerCase();
+  const { results: candidates } = await DB.prepare(
+    `SELECT id FROM cadets
+     WHERE lower(first_name || ' ' || last_name) = ?
+        OR lower(last_name || ' ' || first_name) = ?
+        OR lower(last_name || ', ' || first_name) = ?`,
+  )
+    .bind(needle, needle, needle)
+    .all<{ id: number }>();
+
+  if (candidates.length === 0) {
+    return c.json({ error: `No cadet found matching "${body.cadet_name}".` }, 404);
+  }
+  if (candidates.length > 1) {
+    return c.json({ error: `Multiple cadets match "${body.cadet_name}" — log this one manually instead.` }, 409);
+  }
+
+  const entryDate = body.entry_date?.trim() || new Date().toISOString().slice(0, 10);
+
+  await DB.prepare(
+    `INSERT INTO conduct_gig_reports (reporter_name, cadet_id, entry_date, reasoning, source) VALUES (?, ?, ?, ?, 'form')`,
+  )
+    .bind(body.reporter_name.trim(), candidates[0].id, entryDate, body.reasoning.trim())
+    .run();
+
+  return c.json({ ok: true }, 201);
+});
+
 app.get("/api/me", async (c) => {
   const authed = await isAuthenticated(c.req.raw, c.env);
   if (!authed) return c.json({ authenticated: false }, 401);
@@ -79,6 +129,7 @@ app.route("/api/units", units);
 app.route("/api/unit-awards", unitAwards);
 app.route("/api/new-cadets", newCadets);
 app.route("/api/rank-history", rankHistory);
+app.route("/api/conduct-gig-reports", conductGigReports);
 
 app.notFound((c) => c.json({ error: "Not found" }, 404));
 

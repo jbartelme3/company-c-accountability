@@ -1,9 +1,13 @@
 import type { MetricEntry } from "../types";
-import { LAUNDRY_TYPE_LABELS, METRIC_LABELS, formatPosition } from "../types";
+import { LAUNDRY_TYPE_LABELS, LINEUP_GIG_TYPE_LABELS, METRIC_LABELS, formatPosition } from "../types";
 
 function typeLabel(entry: MetricEntry): string {
   if (entry.type === "laundry_gig" && entry.laundry_type) {
     return `${METRIC_LABELS[entry.type]} · ${LAUNDRY_TYPE_LABELS[entry.laundry_type]}`;
+  }
+  if (entry.type === "new_cadet_lineup_gig" && entry.lineup_gig_type) {
+    const suffix = entry.lineup_gig_type === "conduct" ? " (3)" : "";
+    return `${METRIC_LABELS[entry.type]} · ${LINEUP_GIG_TYPE_LABELS[entry.lineup_gig_type]}${suffix}`;
   }
   return METRIC_LABELS[entry.type];
 }

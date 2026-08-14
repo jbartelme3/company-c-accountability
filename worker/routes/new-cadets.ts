@@ -10,12 +10,14 @@ type CadetRowWithGigCount = CadetRow & { lineup_gig_count: number };
 // ranked by New Cadet Lineup Gig count (fewest first, same "lowest wins"
 // convention as the Military Banner). A cadet stops appearing here the
 // moment they're promoted past New Cadet rank — that promotion is what
-// "passing" the New Cadet System means.
+// "passing" the New Cadet System means. A Conduct Gig counts as 3 toward
+// this total; Room/Uniform/Common Knowledge each count as 1.
 newCadets.get("/", async (c) => {
   const { DB } = c.env;
   const { results } = await DB.prepare(
     `SELECT c.*, (
-       SELECT COUNT(*) FROM metric_entries m
+       SELECT COALESCE(SUM(CASE WHEN m.lineup_gig_type = 'conduct' THEN 3 ELSE 1 END), 0)
+       FROM metric_entries m
        WHERE m.cadet_id = c.id AND m.type = 'new_cadet_lineup_gig'
      ) AS lineup_gig_count
      FROM cadets c

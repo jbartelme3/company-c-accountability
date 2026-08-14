@@ -61,6 +61,10 @@ CREATE TABLE IF NOT EXISTS metric_entries (
   -- Only set (and required) when type = 'laundry_gig': Mixed Laundry and Dry
   -- Cleaning are sub-types of a laundry gig, not their own metric categories.
   laundry_type TEXT CHECK (laundry_type IN ('mixed_laundry', 'dry_cleaning')),
+  -- Only set (and required) when type = 'new_cadet_lineup_gig'. A conduct
+  -- gig is weighted 3x wherever a lineup gig count is shown/ranked on (see
+  -- worker/routes/new-cadets.ts) — the other three sub-types count as 1.
+  lineup_gig_type TEXT CHECK (lineup_gig_type IN ('room', 'uniform', 'conduct', 'common_knowledge')),
   entry_date TEXT NOT NULL,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -129,6 +133,27 @@ CREATE TABLE IF NOT EXISTS rank_history (
 
 CREATE INDEX IF NOT EXISTS idx_rank_history_cadet ON rank_history (cadet_id);
 CREATE INDEX IF NOT EXISTS idx_rank_history_make ON rank_history (make_number);
+
+-- Conduct Gig Reports: a record of who reported a New Cadet for a conduct
+-- issue, and why. 'manual' entries are typed in directly by cadre; 'form'
+-- entries arrive via POST /api/webhooks/conduct-gig-report (a bridge for a
+-- Microsoft Forms + Power Automate flow cadre sets up separately — this app
+-- has no direct Microsoft Forms integration). This log is purely a record of
+-- reports; it does not itself add a Conduct Gig to a cadet's tally — cadre
+-- reviews a report and, if warranted, logs the gig separately via the normal
+-- Add flow (worker/routes/metrics.ts).
+CREATE TABLE IF NOT EXISTS conduct_gig_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  reporter_name TEXT NOT NULL,
+  cadet_id INTEGER NOT NULL REFERENCES cadets (id) ON DELETE CASCADE,
+  entry_date TEXT NOT NULL,
+  reasoning TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'form')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_conduct_reports_cadet ON conduct_gig_reports (cadet_id);
+CREATE INDEX IF NOT EXISTS idx_conduct_reports_date ON conduct_gig_reports (entry_date);
 
 -- Tracks failed login attempts per IP for the shared-password gate. After 5
 -- failed attempts, the IP is locked and a verification code is emailed to the

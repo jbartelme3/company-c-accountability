@@ -5,6 +5,7 @@ export interface Env {
   SESSION_SECRET: string;
   RESEND_API_KEY: string;
   ALERT_EMAIL: string;
+  CONDUCT_REPORT_WEBHOOK_SECRET: string;
 }
 
 export interface CadetRow {
@@ -25,6 +26,7 @@ export interface MetricEntryRow {
   cadet_id: number;
   type: string;
   laundry_type: string | null;
+  lineup_gig_type: string | null;
   entry_date: string;
   note: string | null;
 }
@@ -55,5 +57,15 @@ export interface RankHistoryRow {
   previous_rank: string | null;
   new_rank: string;
   note: string | null;
+  created_at: string;
+}
+
+export interface ConductGigReportRow {
+  id: number;
+  reporter_name: string;
+  cadet_id: number;
+  entry_date: string;
+  reasoning: string;
+  source: string;
   created_at: string;
 }

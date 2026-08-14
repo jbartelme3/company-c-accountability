@@ -14,6 +14,7 @@ import {
   isPlatoonEligible,
   isSquadEligible,
   isTeamEligible,
+  lineupGigWeight,
 } from "../types";
 import MetricBadge from "../components/MetricBadge";
 import MetricEntryModal from "../components/MetricEntryModal";
@@ -112,6 +113,12 @@ export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onB
         {METRIC_TYPE_ORDER.map((type) => {
           const typeEntries = profile.metric_entries.filter((e) => e.type === type);
           const eligible = type !== "new_cadet_lineup_gig" || isEligibleForNewCadetLineupGig(profile);
+          // A Conduct Gig counts as 3 toward the lineup gig total — same
+          // weighting as the New Cadets leaderboard.
+          const count =
+            type === "new_cadet_lineup_gig"
+              ? typeEntries.reduce((sum, e) => sum + lineupGigWeight(e.lineup_gig_type), 0)
+              : typeEntries.length;
           return (
             <button
               key={type}
@@ -122,7 +129,7 @@ export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onB
             >
               <span className="text-sm font-semibold text-slate-800">{METRIC_LABELS[type]}</span>
               <span className="flex items-center gap-2">
-                <MetricBadge type={type} count={typeEntries.length} />
+                <MetricBadge type={type} count={count} />
                 <span className="text-xs text-slate-400">
                   {!eligible ? "N/A" : typeEntries.length === 0 ? "Add" : "View"}
                 </span>

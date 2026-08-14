@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { metricsApi, ApiError } from "../api/client";
-import type { LaundryType, MetricEntry, MetricType } from "../types";
-import { LAUNDRY_TYPES, LAUNDRY_TYPE_LABELS, METRIC_LABELS } from "../types";
+import type { LaundryType, LineupGigType, MetricEntry, MetricType } from "../types";
+import { LAUNDRY_TYPES, LAUNDRY_TYPE_LABELS, LINEUP_GIG_TYPES, LINEUP_GIG_TYPE_LABELS, METRIC_LABELS } from "../types";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -29,6 +29,8 @@ export default function MetricEntryModal({
   const [date, setDate] = useState(todayIso());
   const [note, setNote] = useState("");
   const [laundryType, setLaundryType] = useState<LaundryType>("mixed_laundry");
+  const [lineupGigType, setLineupGigType] = useState<LineupGigType>("room");
+  const [quantity, setQuantity] = useState("1");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -42,10 +44,13 @@ export default function MetricEntryModal({
         cadet_id: cadetId,
         type,
         laundry_type: type === "laundry_gig" ? laundryType : undefined,
+        lineup_gig_type: type === "new_cadet_lineup_gig" ? lineupGigType : undefined,
+        quantity: type === "new_cadet_lineup_gig" ? Number(quantity) || 1 : undefined,
         entry_date: date,
         note: note.trim() || null,
       });
       setNote("");
+      setQuantity("1");
       onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to add entry.");
@@ -108,6 +113,37 @@ export default function MetricEntryModal({
                 </select>
               </div>
             )}
+            {type === "new_cadet_lineup_gig" && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600">Gig for</label>
+                  <select
+                    value={lineupGigType}
+                    onChange={(e) => setLineupGigType(e.target.value as LineupGigType)}
+                    className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                  >
+                    {LINEUP_GIG_TYPES.map((lt) => (
+                      <option key={lt} value={lt}>
+                        {LINEUP_GIG_TYPE_LABELS[lt]}
+                        {lt === "conduct" ? " (worth 3)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600">How many</label>
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    className="mt-1 w-16 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                  />
+                </div>
+              </>
+            )}
             <div className="flex-1">
               <label className="block text-xs font-medium text-slate-600">Note (optional)</label>
               <input
@@ -140,6 +176,12 @@ export default function MetricEntryModal({
                 <span className="font-medium text-slate-800">{entry.entry_date}</span>
                 {entry.laundry_type && (
                   <span className="ml-2 text-xs font-semibold text-slate-500">{LAUNDRY_TYPE_LABELS[entry.laundry_type]}</span>
+                )}
+                {entry.lineup_gig_type && (
+                  <span className="ml-2 text-xs font-semibold text-slate-500">
+                    {LINEUP_GIG_TYPE_LABELS[entry.lineup_gig_type]}
+                    {entry.lineup_gig_type === "conduct" ? " (3)" : ""}
+                  </span>
                 )}
                 {entry.note && <span className="ml-2 text-slate-500">{entry.note}</span>}
               </div>

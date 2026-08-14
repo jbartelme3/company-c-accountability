@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { cadetsApi, metricsApi, ApiError } from "../api/client";
-import type { Cadet, LaundryType, MetricEntry, MetricType } from "../types";
-import { LAUNDRY_TYPES, LAUNDRY_TYPE_LABELS, isEligibleForNewCadetLineupGig } from "../types";
+import type { Cadet, LaundryType, LineupGigType, MetricEntry, MetricType } from "../types";
+import {
+  LAUNDRY_TYPES,
+  LAUNDRY_TYPE_LABELS,
+  LINEUP_GIG_TYPES,
+  LINEUP_GIG_TYPE_LABELS,
+  isEligibleForNewCadetLineupGig,
+} from "../types";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -17,6 +23,7 @@ export default function MetricsTable({
   onChanged: () => void;
 }) {
   const [showAdd, setShowAdd] = useState(false);
+  const hasSubType = type === "laundry_gig" || type === "new_cadet_lineup_gig";
 
   return (
     <div>
@@ -27,6 +34,7 @@ export default function MetricsTable({
               <th className="py-2 pr-3">Date</th>
               <th className="py-2 pr-3">Cadet</th>
               {type === "laundry_gig" && <th className="py-2 pr-3">Laundry Type</th>}
+              {type === "new_cadet_lineup_gig" && <th className="py-2 pr-3">Gig For</th>}
               <th className="py-2 pr-3">Note</th>
               <th className="py-2 pr-3" />
             </tr>
@@ -34,7 +42,7 @@ export default function MetricsTable({
           <tbody>
             {entries.length === 0 && (
               <tr>
-                <td colSpan={type === "laundry_gig" ? 5 : 4} className="py-4 text-sm text-slate-400">
+                <td colSpan={hasSubType ? 5 : 4} className="py-4 text-sm text-slate-400">
                   No entries yet.
                 </td>
               </tr>
@@ -90,6 +98,12 @@ function Row({ type, entry, onChanged }: { type: MetricType; entry: MetricEntry;
       {type === "laundry_gig" && (
         <td className="py-2 pr-3 text-slate-600">{entry.laundry_type ? LAUNDRY_TYPE_LABELS[entry.laundry_type] : "-"}</td>
       )}
+      {type === "new_cadet_lineup_gig" && (
+        <td className="py-2 pr-3 text-slate-600">
+          {entry.lineup_gig_type ? LINEUP_GIG_TYPE_LABELS[entry.lineup_gig_type] : "-"}
+          {entry.lineup_gig_type === "conduct" ? " (3)" : ""}
+        </td>
+      )}
       <td className="py-2 pr-3 text-slate-500">{entry.note ?? "-"}</td>
       <td className="py-2 pr-3 text-right">
         <button onClick={remove} disabled={busy} className="text-xs font-medium text-slate-400 hover:text-red-600">
@@ -105,6 +119,8 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
   const [cadetId, setCadetId] = useState<number | "">("");
   const [date, setDate] = useState(todayIso());
   const [laundryType, setLaundryType] = useState<LaundryType>("mixed_laundry");
+  const [lineupGigType, setLineupGigType] = useState<LineupGigType>("room");
+  const [quantity, setQuantity] = useState("1");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -128,6 +144,8 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
         cadet_id: cadetId,
         type,
         laundry_type: type === "laundry_gig" ? laundryType : undefined,
+        lineup_gig_type: type === "new_cadet_lineup_gig" ? lineupGigType : undefined,
+        quantity: type === "new_cadet_lineup_gig" ? Number(quantity) || 1 : undefined,
         entry_date: date,
         note: note.trim() || null,
       });
@@ -157,7 +175,7 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
           ))}
         </select>
         {type === "new_cadet_lineup_gig" && selectableCadets.length === 0 && (
-          <p className="mt-1 text-xs text-slate-400">No cadets currently at the New Cadet position/rank.</p>
+          <p className="mt-1 text-xs text-slate-400">No cadets currently at the New Cadet rank.</p>
         )}
       </div>
       <div>
@@ -185,6 +203,37 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
             ))}
           </select>
         </div>
+      )}
+      {type === "new_cadet_lineup_gig" && (
+        <>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">Gig for</label>
+            <select
+              value={lineupGigType}
+              onChange={(e) => setLineupGigType(e.target.value as LineupGigType)}
+              className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+            >
+              {LINEUP_GIG_TYPES.map((lt) => (
+                <option key={lt} value={lt}>
+                  {LINEUP_GIG_TYPE_LABELS[lt]}
+                  {lt === "conduct" ? " (worth 3)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">How many</label>
+            <input
+              required
+              type="number"
+              min={1}
+              max={20}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="mt-1 w-16 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+            />
+          </div>
+        </>
       )}
       <div className="flex-1">
         <label className="block text-xs font-medium text-slate-600">Note (optional)</label>

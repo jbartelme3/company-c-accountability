@@ -83,6 +83,27 @@ export const LAUNDRY_TYPE_LABELS: Record<LaundryType, string> = {
   dry_cleaning: "Dry Cleaning",
 };
 
+// New Cadet Lineup Gig sub-types. A Conduct Gig is weighted 3x everywhere a
+// "lineup gig count" is shown or ranked on (the New Cadets leaderboard, a
+// cadet's metric badge) — the other three sub-types each count as 1.
+export type LineupGigType = "room" | "uniform" | "conduct" | "common_knowledge";
+
+export const LINEUP_GIG_TYPES: LineupGigType[] = ["room", "uniform", "conduct", "common_knowledge"];
+
+export const LINEUP_GIG_TYPE_LABELS: Record<LineupGigType, string> = {
+  room: "Room",
+  uniform: "Uniform",
+  conduct: "Conduct Gig",
+  common_knowledge: "Common Knowledge",
+};
+
+export const LINEUP_GIG_TYPE_WEIGHT: Record<LineupGigType, number> = {
+  room: 1,
+  uniform: 1,
+  conduct: 3,
+  common_knowledge: 1,
+};
+
 // Freshman = 4th Classman, Sophomore = 3rd, Junior = 2nd, Senior = 1st.
 // Ordered low-to-high, same convention as RANKS.
 export type ClassYear = "Freshman" | "Sophomore" | "Junior" | "Senior";

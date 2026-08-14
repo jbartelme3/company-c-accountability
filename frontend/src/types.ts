@@ -77,6 +77,31 @@ export const LAUNDRY_TYPE_LABELS: Record<LaundryType, string> = {
   dry_cleaning: "Dry Cleaning",
 };
 
+// New Cadet Lineup Gig sub-types. A Conduct Gig is weighted 3x everywhere a
+// "lineup gig count" is shown or ranked on (the New Cadets leaderboard, a
+// cadet's metric badge) — the other three sub-types each count as 1.
+export type LineupGigType = "room" | "uniform" | "conduct" | "common_knowledge";
+
+export const LINEUP_GIG_TYPES: LineupGigType[] = ["room", "uniform", "conduct", "common_knowledge"];
+
+export const LINEUP_GIG_TYPE_LABELS: Record<LineupGigType, string> = {
+  room: "Room",
+  uniform: "Uniform",
+  conduct: "Conduct Gig",
+  common_knowledge: "Common Knowledge",
+};
+
+export const LINEUP_GIG_TYPE_WEIGHT: Record<LineupGigType, number> = {
+  room: 1,
+  uniform: 1,
+  conduct: 3,
+  common_knowledge: 1,
+};
+
+export function lineupGigWeight(lineupGigType: string | null): number {
+  return LINEUP_GIG_TYPE_WEIGHT[lineupGigType as LineupGigType] ?? 1;
+}
+
 // Freshman = 4th Classman, Sophomore = 3rd, Junior = 2nd, Senior = 1st.
 export type ClassYear = "Freshman" | "Sophomore" | "Junior" | "Senior";
 
@@ -442,6 +467,7 @@ export interface MetricEntry {
   cadet_id: number;
   type: MetricType;
   laundry_type: LaundryType | null;
+  lineup_gig_type: LineupGigType | null;
   entry_date: string;
   note: string | null;
   cadet_name?: string;
@@ -455,6 +481,17 @@ export interface RankHistoryEntry {
   previous_rank: string | null;
   new_rank: string;
   note: string | null;
+  created_at: string;
+}
+
+export interface ConductGigReport {
+  id: number;
+  reporter_name: string;
+  cadet_id: number;
+  cadet_name: string;
+  entry_date: string;
+  reasoning: string;
+  source: "manual" | "form";
   created_at: string;
 }
 

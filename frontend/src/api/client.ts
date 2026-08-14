@@ -2,7 +2,9 @@ import type {
   BannerResult,
   Cadet,
   CadetProfile,
+  ConductGigReport,
   LaundryType,
+  LineupGigType,
   MetricEntry,
   MetricType,
   NewCadetStanding,
@@ -81,16 +83,27 @@ export const metricsApi = {
     cadet_id: number;
     type: MetricType;
     laundry_type?: LaundryType | null;
+    lineup_gig_type?: LineupGigType | null;
+    quantity?: number;
     entry_date?: string;
     note?: string | null;
-  }) => request<MetricEntry>("/api/metrics", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: number, data: Partial<{ entry_date: string; note: string | null; laundry_type: LaundryType | null }>) =>
-    request<MetricEntry>(`/api/metrics/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  }) => request<MetricEntry[]>("/api/metrics", { method: "POST", body: JSON.stringify(data) }),
+  update: (
+    id: number,
+    data: Partial<{ entry_date: string; note: string | null; laundry_type: LaundryType | null; lineup_gig_type: LineupGigType | null }>,
+  ) => request<MetricEntry>(`/api/metrics/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: number) => request<void>(`/api/metrics/${id}`, { method: "DELETE" }),
 };
 
 export const newCadetsApi = {
   list: () => request<NewCadetStanding[]>("/api/new-cadets"),
+};
+
+export const conductGigReportsApi = {
+  list: () => request<ConductGigReport[]>("/api/conduct-gig-reports"),
+  create: (data: { reporter_name: string; cadet_id: number; entry_date: string; reasoning: string }) =>
+    request<ConductGigReport>("/api/conduct-gig-reports", { method: "POST", body: JSON.stringify(data) }),
+  remove: (id: number) => request<void>(`/api/conduct-gig-reports/${id}`, { method: "DELETE" }),
 };
 
 export const unitsApi = {

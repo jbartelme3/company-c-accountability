@@ -1,4 +1,4 @@
-import type { BannerResultRow, CadetRow, MetricEntryRow, RankHistoryRow, UnitAwardRow } from "../types";
+import type { BannerResultRow, CadetRow, ConductGigReportRow, MetricEntryRow, RankHistoryRow, UnitAwardRow } from "../types";
 import { isCadre } from "./metrics";
 
 export function serializeCadet(row: CadetRow) {
@@ -23,6 +23,7 @@ export function serializeMetricEntry(row: MetricEntryRow) {
     cadet_id: row.cadet_id,
     type: row.type,
     laundry_type: row.laundry_type,
+    lineup_gig_type: row.lineup_gig_type,
     entry_date: row.entry_date,
     note: row.note,
   };
@@ -60,6 +61,19 @@ export function serializeRankHistory(row: RankHistoryRow) {
     previous_rank: row.previous_rank,
     new_rank: row.new_rank,
     note: row.note,
+    created_at: row.created_at,
+  };
+}
+
+export function serializeConductGigReport(row: ConductGigReportRow & { cadet_first_name: string; cadet_last_name: string }) {
+  return {
+    id: row.id,
+    reporter_name: row.reporter_name,
+    cadet_id: row.cadet_id,
+    cadet_name: `${row.cadet_first_name} ${row.cadet_last_name}`,
+    entry_date: row.entry_date,
+    reasoning: row.reasoning,
+    source: row.source,
     created_at: row.created_at,
   };
 }
