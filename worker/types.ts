@@ -47,3 +47,13 @@ export interface UnitAwardRow {
   leader_cadet_id: number;
   note: string | null;
 }
+
+export interface RankHistoryRow {
+  id: number;
+  cadet_id: number;
+  make_number: number | null;
+  previous_rank: string | null;
+  new_rank: string;
+  note: string | null;
+  created_at: string;
+}

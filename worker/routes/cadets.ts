@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import type { Env, CadetRow, MetricEntryRow } from "../types";
-import { serializeCadet, serializeMetricEntry } from "../lib/serialize";
+import type { Env, CadetRow, MetricEntryRow, RankHistoryRow } from "../types";
+import { serializeCadet, serializeMetricEntry, serializeRankHistory } from "../lib/serialize";
 import {
   METRIC_TYPES,
   METRIC_POLARITY,
@@ -10,6 +10,7 @@ import {
   UNIT_ELIGIBILITY,
   UNIT_LEADER_COLUMN,
   LEADER_POSITION_FOR_UNIT,
+  MAKE_NUMBERS,
   isClassYearEligibleForPosition,
   isClassYearEligibleForSecondaryPosition,
   rankAfterPositionChange,
@@ -148,6 +149,12 @@ cadets.get("/:id", async (c) => {
     .bind(id)
     .all<MetricEntryRow>();
 
+  const { results: rankHistory } = await DB.prepare(
+    "SELECT * FROM rank_history WHERE cadet_id = ? ORDER BY created_at DESC, id DESC",
+  )
+    .bind(id)
+    .all<RankHistoryRow>();
+
   return c.json({
     ...serializeCadet(cadet),
     team_leader_name: cadet.team_leader_first_name ? `${cadet.team_leader_first_name} ${cadet.team_leader_last_name}` : null,
@@ -158,6 +165,7 @@ cadets.get("/:id", async (c) => {
       ? `${cadet.platoon_leader_first_name} ${cadet.platoon_leader_last_name}`
       : null,
     metric_entries: entries.map(serializeMetricEntry),
+    rank_history: rankHistory.map(serializeRankHistory),
   });
 });
 
@@ -247,6 +255,8 @@ cadets.patch("/:id", async (c) => {
       rank: string | null;
       class_year: string | null;
       secondary_position: string | null;
+      make_number: number | null;
+      rank_change_note: string | null;
     }> &
       UnitAssignmentBody
   >();
@@ -256,6 +266,10 @@ cadets.patch("/:id", async (c) => {
   const requestedRank = body.rank !== undefined ? body.rank?.trim() || null : existing.rank;
   const secondaryPosition =
     body.secondary_position !== undefined ? body.secondary_position?.trim() || null : existing.secondary_position;
+
+  if (body.make_number != null && !MAKE_NUMBERS.includes(body.make_number)) {
+    return c.json({ error: `make_number must be one of: ${MAKE_NUMBERS.join(", ")}` }, 400);
+  }
 
   // Class-year eligibility is checked against the position actually
   // requested by the caller — the "rank New Cadet forces Element" override
@@ -323,6 +337,20 @@ cadets.patch("/:id", async (c) => {
     .run();
 
   await dissolveUnitIfLeaderChanged(DB, existing.position, position, id);
+
+  // Every actual rank transition gets archived — whether from a direct rank
+  // edit or a position change bumping the rank floor — so "what rank were
+  // they during Make 2" stays answerable later. make_number is optional:
+  // only meaningful when this edit is cadre recording a specific make's
+  // promotion, but the history entry is written either way.
+  if (merged.rank !== existing.rank) {
+    await DB.prepare(
+      `INSERT INTO rank_history (cadet_id, make_number, previous_rank, new_rank, note)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+      .bind(id, body.make_number ?? null, existing.rank, merged.rank, body.rank_change_note?.trim() || null)
+      .run();
+  }
 
   const updated = await DB.prepare("SELECT * FROM cadets WHERE id = ?").bind(id).first<CadetRow>();
   return c.json(serializeCadet(updated!));

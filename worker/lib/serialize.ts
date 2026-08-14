@@ -1,4 +1,4 @@
-import type { BannerResultRow, CadetRow, MetricEntryRow, UnitAwardRow } from "../types";
+import type { BannerResultRow, CadetRow, MetricEntryRow, RankHistoryRow, UnitAwardRow } from "../types";
 import { isCadre } from "./metrics";
 
 export function serializeCadet(row: CadetRow) {
@@ -49,5 +49,17 @@ export function serializeUnitAward(row: UnitAwardRow & { leader_first_name: stri
     leader_cadet_id: row.leader_cadet_id,
     leader_name: `${row.leader_first_name} ${row.leader_last_name}`,
     note: row.note,
+  };
+}
+
+export function serializeRankHistory(row: RankHistoryRow) {
+  return {
+    id: row.id,
+    cadet_id: row.cadet_id,
+    make_number: row.make_number,
+    previous_rank: row.previous_rank,
+    new_rank: row.new_rank,
+    note: row.note,
+    created_at: row.created_at,
   };
 }

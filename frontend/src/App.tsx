@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { auth } from "./api/client";
 import Login from "./pages/Login";
 import CadetsTab from "./pages/CadetsTab";
+import NewCadetsTab from "./pages/NewCadetsTab";
 import UnitTab from "./pages/UnitTab";
 import MetricsTab from "./pages/MetricsTab";
 import UnitPerformanceTab from "./pages/UnitPerformanceTab";
 
-type Tab = "cadets" | "team" | "squad" | "platoon" | "metrics" | "performance";
+type Tab = "cadets" | "newCadets" | "team" | "squad" | "platoon" | "metrics" | "performance";
 
 export default function App() {
   const [authState, setAuthState] = useState<"checking" | "authed" | "unauthed">("checking");
@@ -44,6 +45,7 @@ export default function App() {
         <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4">
           {([
             { key: "cadets", label: "Cadets" },
+            { key: "newCadets", label: "New Cadets" },
             { key: "team", label: "Team" },
             { key: "squad", label: "Squad" },
             { key: "platoon", label: "Platoon" },
@@ -65,6 +67,7 @@ export default function App() {
 
       <main className="mx-auto max-w-5xl px-4 py-6">
         {tab === "cadets" && <CadetsTab />}
+        {tab === "newCadets" && <NewCadetsTab />}
         {tab === "team" && <UnitTab unitType="team" />}
         {tab === "squad" && <UnitTab unitType="squad" />}
         {tab === "platoon" && <UnitTab unitType="platoon" />}

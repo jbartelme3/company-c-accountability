@@ -109,13 +109,13 @@ export interface CadetLike {
 
 // New Cadet Lineup Gigs are part of the New Cadet System (per the handbook,
 // the onboarding program new arrivals go through before earning their branch
-// insignia) — only applies to cadets currently holding the Element position
-// (the rank-and-file base position — see UNIT_POSITIONS) at one of the New
-// Cadet-tier ranks.
-const NEW_CADET_LINEUP_RANKS = new Set(["New Cadet", "Private", "Private First Class"]);
-
+// insignia) — a cadet stops receiving them the moment they're promoted past
+// the New Cadet rank (that promotion is what "passing" the New Cadet System
+// means). Position is always Element while rank is New Cadet (see
+// rankAfterPositionChange), so checking rank alone is sufficient; the
+// position check is kept as a defensive belt-and-suspenders guard.
 export function isEligibleForNewCadetLineupGig(cadet: CadetLike): boolean {
-  return cadet.position === "Element" && !!cadet.rank && NEW_CADET_LINEUP_RANKS.has(cadet.rank);
+  return cadet.position === "Element" && cadet.rank === "New Cadet";
 }
 
 export interface PositionOption {
@@ -133,6 +133,7 @@ const UNIT_POSITIONS: PositionOption[] = [
   { label: "Team Leader", abbrev: "TL" },
   { label: "Squad Leader", abbrev: "SL" },
   { label: "Unit NCO", abbrev: "UNCO" },
+  { label: "Diversity NCO", abbrev: "DIVNCO" },
   { label: "Platoon Sergeant", abbrev: "PS" },
   { label: "Platoon Leader", abbrev: "PL" },
   { label: "Operations Sergeant", abbrev: "OPS" },
@@ -302,6 +303,7 @@ export const POSITION_MIN_RANK: Record<string, string> = {
   "Team Leader": "Private First Class",
   "Squad Leader": "Lance Corporal",
   "Unit NCO": "Corporal",
+  "Diversity NCO": "Corporal",
   "Platoon Sergeant": "Sergeant", // class-year dependent in practice — see ACTING_RANK_BY_CLASS_YEAR
   "Platoon Leader": "Second Lieutenant",
   "Operations Sergeant": "Operations Sergeant",

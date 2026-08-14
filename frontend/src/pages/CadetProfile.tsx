@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { cadetsApi } from "../api/client";
+import { ApiError, cadetsApi, rankHistoryApi } from "../api/client";
 import type { CadetProfile as CadetProfileType, MetricType, UnitType } from "../types";
 import {
   LEADER_POSITION_FOR_UNIT,
@@ -139,11 +139,57 @@ export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onB
           type={openType}
           entries={profile.metric_entries.filter((e) => e.type === openType)}
           canAdd={openType !== "new_cadet_lineup_gig" || isEligibleForNewCadetLineupGig(profile)}
-          ineligibleReason="New Cadet Lineup Gigs only apply to cadets holding the New Cadet position at the New Cadet/Private/PFC rank."
+          ineligibleReason="New Cadet Lineup Gigs only apply to cadets currently holding the New Cadet rank."
           onClose={() => setOpenType(null)}
           onChanged={load}
         />
       )}
+
+      <RankHistorySection entries={profile.rank_history} onChanged={load} />
+    </div>
+  );
+}
+
+function RankHistorySection({ entries, onChanged }: { entries: CadetProfileType["rank_history"]; onChanged: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+
+  if (entries.length === 0) return null;
+
+  async function remove(id: number) {
+    if (!confirm("Remove this rank history entry?")) return;
+    setError(null);
+    try {
+      await rankHistoryApi.remove(id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to remove entry.");
+    }
+  }
+
+  return (
+    <div className="mt-6 space-y-3">
+      <h3 className="text-sm font-semibold text-slate-700">Rank History</h3>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        {entries.map((entry, i) => (
+          <div
+            key={entry.id}
+            className={`flex items-center justify-between px-4 py-2.5 text-sm ${i > 0 ? "border-t border-slate-100" : ""}`}
+          >
+            <span className="text-slate-800">
+              {formatRank(entry.previous_rank)} → {formatRank(entry.new_rank)}
+              {entry.make_number != null && ` (Make ${entry.make_number})`}
+              {entry.note && <span className="text-slate-500"> · {entry.note}</span>}
+            </span>
+            <span className="flex items-center gap-3">
+              <span className="text-xs text-slate-400">{entry.created_at.slice(0, 10)}</span>
+              <button onClick={() => remove(entry.id)} className="text-xs font-medium text-slate-400 hover:text-red-600">
+                Remove
+              </button>
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

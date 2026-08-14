@@ -1,4 +1,15 @@
-import type { BannerResult, Cadet, CadetProfile, LaundryType, MetricEntry, MetricType, UnitAward, UnitCompilation, UnitType } from "../types";
+import type {
+  BannerResult,
+  Cadet,
+  CadetProfile,
+  LaundryType,
+  MetricEntry,
+  MetricType,
+  NewCadetStanding,
+  UnitAward,
+  UnitCompilation,
+  UnitType,
+} from "../types";
 
 class ApiError extends Error {
   status: number;
@@ -49,9 +60,13 @@ export const cadetsApi = {
   list: () => request<Cadet[]>("/api/cadets"),
   get: (id: number) => request<CadetProfile>(`/api/cadets/${id}`),
   create: (data: Partial<Cadet>) => request<Cadet>("/api/cadets", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: number, data: Partial<Cadet>) =>
+  update: (id: number, data: Partial<Cadet> & { make_number?: number | null; rank_change_note?: string | null }) =>
     request<Cadet>(`/api/cadets/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: number) => request<void>(`/api/cadets/${id}`, { method: "DELETE" }),
+};
+
+export const rankHistoryApi = {
+  remove: (id: number) => request<void>(`/api/rank-history/${id}`, { method: "DELETE" }),
 };
 
 export const metricsApi = {
@@ -72,6 +87,10 @@ export const metricsApi = {
   update: (id: number, data: Partial<{ entry_date: string; note: string | null; laundry_type: LaundryType | null }>) =>
     request<MetricEntry>(`/api/metrics/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: number) => request<void>(`/api/metrics/${id}`, { method: "DELETE" }),
+};
+
+export const newCadetsApi = {
+  list: () => request<NewCadetStanding[]>("/api/new-cadets"),
 };
 
 export const unitsApi = {

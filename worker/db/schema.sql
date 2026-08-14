@@ -111,6 +111,25 @@ CREATE INDEX IF NOT EXISTS idx_unit_awards_date ON unit_of_week_awards (entry_da
 CREATE INDEX IF NOT EXISTS idx_unit_awards_type ON unit_of_week_awards (unit_type);
 CREATE INDEX IF NOT EXISTS idx_unit_awards_leader ON unit_of_week_awards (leader_cadet_id);
 
+-- Rank changes are auto-logged here (see worker/routes/cadets.ts) every time
+-- a cadet's rank actually changes, whether from a direct edit or a position
+-- change bumping the rank floor. make_number ties a change to one of the 3
+-- makes per school year (same convention as banner_results) but is optional
+-- since not every rank edit happens to land on a specific make.
+-- previous_rank is nullable to tolerate a null starting rank; new_rank never is.
+CREATE TABLE IF NOT EXISTS rank_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cadet_id INTEGER NOT NULL REFERENCES cadets (id) ON DELETE CASCADE,
+  make_number INTEGER CHECK (make_number IN (1, 2, 3)),
+  previous_rank TEXT,
+  new_rank TEXT NOT NULL,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_rank_history_cadet ON rank_history (cadet_id);
+CREATE INDEX IF NOT EXISTS idx_rank_history_make ON rank_history (make_number);
+
 -- Tracks failed login attempts per IP for the shared-password gate. After 5
 -- failed attempts, the IP is locked and a verification code is emailed to the
 -- admin; only entering that code (POST /api/login/verify) clears the lock.

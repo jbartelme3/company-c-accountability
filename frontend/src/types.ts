@@ -95,12 +95,11 @@ export function formatClassYear(classYear: string | null): string {
   return label ? `${classYear} (${label})` : classYear;
 }
 
-// New Cadet Lineup Gigs only apply to cadets currently holding the Element
-// position (the rank-and-file base position) at a New Cadet-tier rank.
-const NEW_CADET_LINEUP_RANKS = new Set(["New Cadet", "Private", "Private First Class"]);
-
+// New Cadet Lineup Gigs are part of the New Cadet System — a cadet stops
+// receiving them the moment they're promoted past the New Cadet rank (that
+// promotion is what "passing" the New Cadet System means).
 export function isEligibleForNewCadetLineupGig(cadet: Pick<Cadet, "position" | "rank">): boolean {
-  return cadet.position === "Element" && !!cadet.rank && NEW_CADET_LINEUP_RANKS.has(cadet.rank);
+  return cadet.position === "Element" && cadet.rank === "New Cadet";
 }
 
 export interface PositionOption {
@@ -118,6 +117,7 @@ export const UNIT_POSITIONS: PositionOption[] = [
   { label: "Team Leader", abbrev: "TL" },
   { label: "Squad Leader", abbrev: "SL" },
   { label: "Unit NCO", abbrev: "UNCO" },
+  { label: "Diversity NCO", abbrev: "DIVNCO" },
   { label: "Platoon Sergeant", abbrev: "PS" },
   { label: "Platoon Leader", abbrev: "PL" },
   { label: "Operations Sergeant", abbrev: "OPS" },
@@ -281,6 +281,7 @@ export const POSITION_MIN_RANK: Record<string, string> = {
   "Team Leader": "Private First Class",
   "Squad Leader": "Lance Corporal",
   "Unit NCO": "Corporal",
+  "Diversity NCO": "Corporal",
   "Platoon Sergeant": "Sergeant", // class-year dependent in practice — see ACTING_RANK_BY_CLASS_YEAR
   "Platoon Leader": "Second Lieutenant",
   "Operations Sergeant": "Operations Sergeant",
@@ -432,6 +433,10 @@ export interface Cadet {
   platoon_leader_id: number | null;
 }
 
+export interface NewCadetStanding extends Cadet {
+  lineup_gig_count: number;
+}
+
 export interface MetricEntry {
   id: number;
   cadet_id: number;
@@ -443,11 +448,22 @@ export interface MetricEntry {
   cadet_position?: string;
 }
 
+export interface RankHistoryEntry {
+  id: number;
+  cadet_id: number;
+  make_number: number | null;
+  previous_rank: string | null;
+  new_rank: string;
+  note: string | null;
+  created_at: string;
+}
+
 export interface CadetProfile extends Cadet {
   metric_entries: MetricEntry[];
   team_leader_name: string | null;
   squad_leader_name: string | null;
   platoon_leader_name: string | null;
+  rank_history: RankHistoryEntry[];
 }
 
 // The Military Banner: a weekly, regiment-wide competition scored on

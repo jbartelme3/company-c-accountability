@@ -81,7 +81,7 @@ metrics.post("/", async (c) => {
 
   if (body.type === "new_cadet_lineup_gig" && !isEligibleForNewCadetLineupGig(cadet)) {
     return c.json(
-      { error: "New Cadet Lineup Gigs only apply to cadets holding the New Cadet position at the New Cadet/Private/PFC rank." },
+      { error: "New Cadet Lineup Gigs only apply to cadets currently holding the New Cadet rank." },
       400,
     );
   }
