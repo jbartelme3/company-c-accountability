@@ -249,6 +249,12 @@ export const SECONDARY_POSITIONS: PositionOption[] = [
   { label: "Unit Armorer", abbrev: "U-ARM" },
   { label: "Unit Guidon", abbrev: "U-GUIDON" },
   { label: "Battalion Guidon", abbrev: "B-GUIDON" },
+  // A Unit NCO's primary roster position is usually still "Element" — Unit
+  // NCO is held in tangent as a collateral duty, not a promotion out of the
+  // team/squad/platoon structure (confirmed by Company C cadre). Distinct
+  // from the primary "Unit NCO" position (UNIT_POSITIONS above, abbrev
+  // "UNCO") for whichever rarer case it's held as a full-time billet instead.
+  { label: "Unit NCO", abbrev: "U-NCO" },
 ];
 
 export function formatSecondaryPosition(position: string | null): string {
