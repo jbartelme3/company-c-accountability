@@ -73,6 +73,19 @@ export default function CadetForm({
     cadetsApi.list().then(setAllCadets).catch(() => {});
   }, []);
 
+  // Streamlining rule: a cadet following a team is always in that Team
+  // Leader's own squad and platoon — not an independent choice, so every
+  // teammate is guaranteed to match (enforced server-side too; this just
+  // keeps the form's displayed values from going stale before save).
+  useEffect(() => {
+    if (!teamLeaderId) return;
+    const leader = allCadets.find((c) => c.id === teamLeaderId);
+    if (leader) {
+      setSquadLeaderId(leader.squad_leader_id);
+      setPlatoonLeaderId(leader.platoon_leader_id);
+    }
+  }, [teamLeaderId, allCadets]);
+
   function resetUnitAssignments() {
     setTeamLeaderId(null);
     setSquadLeaderId(null);
@@ -300,6 +313,7 @@ export default function CadetForm({
                   allCadets={allCadets}
                   value={squadLeaderId}
                   onChange={setSquadLeaderId}
+                  inheritedFromTeamId={isTeamEligible(position) ? teamLeaderId : null}
                 />
               )}
               {isPlatoonEligible(position) && (
@@ -309,6 +323,7 @@ export default function CadetForm({
                   allCadets={allCadets}
                   value={platoonLeaderId}
                   onChange={setPlatoonLeaderId}
+                  inheritedFromTeamId={isTeamEligible(position) ? teamLeaderId : null}
                 />
               )}
             </div>
@@ -346,16 +361,21 @@ function UnitAssignmentField({
   allCadets,
   value,
   onChange,
+  inheritedFromTeamId,
 }: {
   unitType: UnitType;
   position: string;
   allCadets: Cadet[];
   value: number | null;
   onChange: (id: number | null) => void;
+  /** For squad/platoon only: when set, this cadet follows a team, so squad/platoon are inherited from that Team Leader, not independently chosen (see the streamlining useEffect in CadetForm). */
+  inheritedFromTeamId?: number | null;
 }) {
   const leaderPosition = LEADER_POSITION_FOR_UNIT[unitType];
   const isLeader = position === leaderPosition;
   const leaders = allCadets.filter((c) => c.position === leaderPosition);
+  const teamLeader = inheritedFromTeamId ? allCadets.find((c) => c.id === inheritedFromTeamId) : null;
+  const inheritedLeader = teamLeader ? leaders.find((l) => l.id === value) : null;
 
   return (
     <div>
@@ -363,6 +383,12 @@ function UnitAssignmentField({
       {isLeader ? (
         <p className="mt-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-500">
           Leads own {unitType}
+        </p>
+      ) : teamLeader ? (
+        <p className="mt-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-500">
+          {inheritedLeader
+            ? `${inheritedLeader.first_name} ${inheritedLeader.last_name}'s ${unitType} (same as ${teamLeader.first_name}'s team)`
+            : `Unassigned (same as ${teamLeader.first_name}'s team)`}
         </p>
       ) : (
         <select

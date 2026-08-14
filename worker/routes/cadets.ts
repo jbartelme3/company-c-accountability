@@ -84,6 +84,23 @@ async function resolveLeaderId(
   return candidate;
 }
 
+// A cadet following a team (team_leader_id set to someone else) is always
+// in that Team Leader's own squad and platoon — squad/platoon aren't
+// independently chosen for team followers, so every teammate is guaranteed
+// to share the same squad/platoon as the rest of their team. Returns null
+// when there's no team to inherit from (squad/platoon then resolve
+// independently, same as before).
+async function resolveFollowerUnits(
+  DB: D1Database,
+  teamLeaderId: number | null,
+): Promise<{ squad_leader_id: number | null; platoon_leader_id: number | null } | null> {
+  if (teamLeaderId == null) return null;
+  const leader = await DB.prepare("SELECT squad_leader_id, platoon_leader_id FROM cadets WHERE id = ?")
+    .bind(teamLeaderId)
+    .first<{ squad_leader_id: number | null; platoon_leader_id: number | null }>();
+  return leader ?? null;
+}
+
 // After a cadet stops holding a unit's leader billet, everyone who was
 // following them (including their own now-stale self-reference, already
 // overwritten by the caller's UPDATE) falls out of that unit.
@@ -207,8 +224,13 @@ cadets.post("/", async (c) => {
   // yet) — a Team/Squad/Platoon Leader gets self-assigned in a follow-up
   // UPDATE right after insert.
   const teamLeaderId = await resolveLeaderId(DB, "team", position, body.team_leader_id, null, null);
-  const squadLeaderId = await resolveLeaderId(DB, "squad", position, body.squad_leader_id, null, null);
-  const platoonLeaderId = await resolveLeaderId(DB, "platoon", position, body.platoon_leader_id, null, null);
+  const followerUnits = await resolveFollowerUnits(DB, teamLeaderId);
+  const squadLeaderId = followerUnits
+    ? followerUnits.squad_leader_id
+    : await resolveLeaderId(DB, "squad", position, body.squad_leader_id, null, null);
+  const platoonLeaderId = followerUnits
+    ? followerUnits.platoon_leader_id
+    : await resolveLeaderId(DB, "platoon", position, body.platoon_leader_id, null, null);
 
   const result = await DB.prepare(
     `INSERT INTO cadets (first_name, last_name, position, rank, class_year, secondary_position, team_leader_id, squad_leader_id, platoon_leader_id, updated_at)
@@ -309,15 +331,16 @@ cadets.patch("/:id", async (c) => {
   };
 
   const teamLeaderId = await resolveLeaderId(DB, "team", position, body.team_leader_id, existing.team_leader_id, id);
-  const squadLeaderId = await resolveLeaderId(DB, "squad", position, body.squad_leader_id, existing.squad_leader_id, id);
-  const platoonLeaderId = await resolveLeaderId(
-    DB,
-    "platoon",
-    position,
-    body.platoon_leader_id,
-    existing.platoon_leader_id,
-    id,
-  );
+  // A Team Leader's own squad/platoon is still an independent choice — it's
+  // only their *followers* (team_leader_id resolving to someone else) whose
+  // squad/platoon are inherited rather than chosen. See resolveFollowerUnits.
+  const followerUnits = teamLeaderId !== id ? await resolveFollowerUnits(DB, teamLeaderId) : null;
+  const squadLeaderId = followerUnits
+    ? followerUnits.squad_leader_id
+    : await resolveLeaderId(DB, "squad", position, body.squad_leader_id, existing.squad_leader_id, id);
+  const platoonLeaderId = followerUnits
+    ? followerUnits.platoon_leader_id
+    : await resolveLeaderId(DB, "platoon", position, body.platoon_leader_id, existing.platoon_leader_id, id);
 
   await DB.prepare(
     `UPDATE cadets SET first_name = ?, last_name = ?, position = ?, rank = ?, class_year = ?, secondary_position = ?, team_leader_id = ?, squad_leader_id = ?, platoon_leader_id = ?, updated_at = datetime('now') WHERE id = ?`,
@@ -337,6 +360,17 @@ cadets.patch("/:id", async (c) => {
     .run();
 
   await dissolveUnitIfLeaderChanged(DB, existing.position, position, id);
+
+  // Keep this cadet's existing team followers in sync: if they're a Team
+  // Leader (or just stopped being one via dissolveUnitIfLeaderChanged above,
+  // in which case this is a harmless no-op — nothing still points at them),
+  // whatever squad/platoon they just landed on propagates to everyone who
+  // follows their team, same as if each of them had just been re-saved.
+  await DB.prepare(
+    `UPDATE cadets SET squad_leader_id = ?, platoon_leader_id = ?, updated_at = datetime('now') WHERE team_leader_id = ? AND id != ?`,
+  )
+    .bind(squadLeaderId, platoonLeaderId, id, id)
+    .run();
 
   // Every actual rank transition gets archived — whether from a direct rank
   // edit or a position change bumping the rank floor — so "what rank were
