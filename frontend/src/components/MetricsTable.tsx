@@ -9,6 +9,8 @@ import {
   isEligibleForNewCadetLineupGig,
 } from "../types";
 
+const QUANTITIES = Array.from({ length: 20 }, (_, i) => i + 1);
+
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -145,7 +147,7 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
         type,
         laundry_type: type === "laundry_gig" ? laundryType : undefined,
         lineup_gig_type: type === "new_cadet_lineup_gig" ? lineupGigType : undefined,
-        quantity: type === "new_cadet_lineup_gig" ? Number(quantity) || 1 : undefined,
+        quantity: Number(quantity) || 1,
         entry_date: date,
         note: note.trim() || null,
       });
@@ -205,36 +207,36 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
         </div>
       )}
       {type === "new_cadet_lineup_gig" && (
-        <>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Gig for</label>
-            <select
-              value={lineupGigType}
-              onChange={(e) => setLineupGigType(e.target.value as LineupGigType)}
-              className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
-            >
-              {LINEUP_GIG_TYPES.map((lt) => (
-                <option key={lt} value={lt}>
-                  {LINEUP_GIG_TYPE_LABELS[lt]}
-                  {lt === "conduct" ? " (worth 3)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">How many</label>
-            <input
-              required
-              type="number"
-              min={1}
-              max={20}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className="mt-1 w-16 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
-            />
-          </div>
-        </>
+        <div>
+          <label className="block text-xs font-medium text-slate-600">Gig for</label>
+          <select
+            value={lineupGigType}
+            onChange={(e) => setLineupGigType(e.target.value as LineupGigType)}
+            className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+          >
+            {LINEUP_GIG_TYPES.map((lt) => (
+              <option key={lt} value={lt}>
+                {LINEUP_GIG_TYPE_LABELS[lt]}
+                {lt === "conduct" ? " (worth 3)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
+      <div>
+        <label className="block text-xs font-medium text-slate-600">How many</label>
+        <select
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+        >
+          {QUANTITIES.map((q) => (
+            <option key={q} value={q}>
+              {q}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="flex-1">
         <label className="block text-xs font-medium text-slate-600">Note (optional)</label>
         <input value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm" />

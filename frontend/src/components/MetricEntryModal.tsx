@@ -1,31 +1,45 @@
 import { useState } from "react";
 import { metricsApi, ApiError } from "../api/client";
 import type { LaundryType, LineupGigType, MetricEntry, MetricType } from "../types";
-import { LAUNDRY_TYPES, LAUNDRY_TYPE_LABELS, LINEUP_GIG_TYPES, LINEUP_GIG_TYPE_LABELS, METRIC_LABELS } from "../types";
+import {
+  LAUNDRY_TYPES,
+  LAUNDRY_TYPE_LABELS,
+  LINEUP_GIG_TYPES,
+  LINEUP_GIG_TYPE_LABELS,
+  METRIC_LABELS,
+  METRIC_TYPE_ORDER,
+  isEligibleForNewCadetLineupGig,
+} from "../types";
+
+const QUANTITIES = Array.from({ length: 20 }, (_, i) => i + 1);
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+const INELIGIBLE_LINEUP_GIG_REASON = "New Cadet Lineup Gigs only apply to cadets currently holding the New Cadet rank.";
+
 export default function MetricEntryModal({
   cadetId,
   cadetName,
+  cadet,
   type,
   entries,
-  canAdd = true,
-  ineligibleReason,
   onClose,
   onChanged,
 }: {
   cadetId: number;
   cadetName: string;
-  type: MetricType;
+  /** Only needed to gate New Cadet Lineup Gig eligibility. */
+  cadet: { position: string; rank: string | null };
+  /** A fixed metric type, or null to let the user pick one from a dropdown (e.g. the Cadets tab's quick-add). */
+  type: MetricType | null;
+  /** Every metric entry for this cadet — filtered internally to whichever type is active. */
   entries: MetricEntry[];
-  canAdd?: boolean;
-  ineligibleReason?: string;
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const [selectedType, setSelectedType] = useState<MetricType | "">(type ?? "");
   const [date, setDate] = useState(todayIso());
   const [note, setNote] = useState("");
   const [laundryType, setLaundryType] = useState<LaundryType>("mixed_laundry");
@@ -35,17 +49,26 @@ export default function MetricEntryModal({
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
 
+  const typeLocked = type !== null;
+  const activeType = typeLocked ? type : selectedType || null;
+  const eligible = activeType == null || activeType !== "new_cadet_lineup_gig" || isEligibleForNewCadetLineupGig(cadet);
+  const typeEntries = activeType ? entries.filter((e) => e.type === activeType) : [];
+
   async function addEntry(e: React.FormEvent) {
     e.preventDefault();
+    if (!activeType) {
+      setError("Select a metric type.");
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
       await metricsApi.create({
         cadet_id: cadetId,
-        type,
-        laundry_type: type === "laundry_gig" ? laundryType : undefined,
-        lineup_gig_type: type === "new_cadet_lineup_gig" ? lineupGigType : undefined,
-        quantity: type === "new_cadet_lineup_gig" ? Number(quantity) || 1 : undefined,
+        type: activeType,
+        laundry_type: activeType === "laundry_gig" ? laundryType : undefined,
+        lineup_gig_type: activeType === "new_cadet_lineup_gig" ? lineupGigType : undefined,
+        quantity: Number(quantity) || 1,
         entry_date: date,
         note: note.trim() || null,
       });
@@ -78,15 +101,33 @@ export default function MetricEntryModal({
       <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-slate-900">
-            {METRIC_LABELS[type]} · {cadetName}
+            {activeType ? METRIC_LABELS[activeType] : "Add Metric"} · {cadetName}
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
             ✕
           </button>
         </div>
 
-        {canAdd ? (
+        {eligible ? (
           <form onSubmit={addEntry} className="mt-4 flex flex-wrap items-end gap-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+            {!typeLocked && (
+              <div>
+                <label className="block text-xs font-medium text-slate-600">Metric type</label>
+                <select
+                  required
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value as MetricType)}
+                  className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                >
+                  <option value="">Select…</option>
+                  {METRIC_TYPE_ORDER.map((t) => (
+                    <option key={t} value={t}>
+                      {METRIC_LABELS[t]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-slate-600">Date</label>
               <input
@@ -97,7 +138,7 @@ export default function MetricEntryModal({
                 className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
               />
             </div>
-            {type === "laundry_gig" && (
+            {activeType === "laundry_gig" && (
               <div>
                 <label className="block text-xs font-medium text-slate-600">Laundry type</label>
                 <select
@@ -113,36 +154,38 @@ export default function MetricEntryModal({
                 </select>
               </div>
             )}
-            {type === "new_cadet_lineup_gig" && (
-              <>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">Gig for</label>
-                  <select
-                    value={lineupGigType}
-                    onChange={(e) => setLineupGigType(e.target.value as LineupGigType)}
-                    className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
-                  >
-                    {LINEUP_GIG_TYPES.map((lt) => (
-                      <option key={lt} value={lt}>
-                        {LINEUP_GIG_TYPE_LABELS[lt]}
-                        {lt === "conduct" ? " (worth 3)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">How many</label>
-                  <input
-                    required
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="mt-1 w-16 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
-                  />
-                </div>
-              </>
+            {activeType === "new_cadet_lineup_gig" && (
+              <div>
+                <label className="block text-xs font-medium text-slate-600">Gig for</label>
+                <select
+                  value={lineupGigType}
+                  onChange={(e) => setLineupGigType(e.target.value as LineupGigType)}
+                  className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                >
+                  {LINEUP_GIG_TYPES.map((lt) => (
+                    <option key={lt} value={lt}>
+                      {LINEUP_GIG_TYPE_LABELS[lt]}
+                      {lt === "conduct" ? " (worth 3)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {activeType && (
+              <div>
+                <label className="block text-xs font-medium text-slate-600">How many</label>
+                <select
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                >
+                  {QUANTITIES.map((q) => (
+                    <option key={q} value={q}>
+                      {q}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
             <div className="flex-1">
               <label className="block text-xs font-medium text-slate-600">Note (optional)</label>
@@ -154,7 +197,7 @@ export default function MetricEntryModal({
             </div>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !activeType}
               className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
             >
               {submitting ? "Adding…" : "Add"}
@@ -162,15 +205,16 @@ export default function MetricEntryModal({
           </form>
         ) : (
           <p className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-            {ineligibleReason ?? "Not eligible for this metric."}
+            {INELIGIBLE_LINEUP_GIG_REASON}
           </p>
         )}
 
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
         <div className="mt-4 max-h-64 space-y-1 overflow-y-auto">
-          {entries.length === 0 && <p className="text-sm text-slate-400">No entries yet.</p>}
-          {entries.map((entry) => (
+          {activeType == null && <p className="text-sm text-slate-400">Pick a metric type to see its entries.</p>}
+          {activeType != null && typeEntries.length === 0 && <p className="text-sm text-slate-400">No entries yet.</p>}
+          {typeEntries.map((entry) => (
             <div key={entry.id} className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm">
               <div>
                 <span className="font-medium text-slate-800">{entry.entry_date}</span>

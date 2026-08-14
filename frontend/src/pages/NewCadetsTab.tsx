@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { cadetsApi, metricsApi, newCadetsApi } from "../api/client";
 import type { CadetProfile as CadetProfileType, MetricEntry, NewCadetStanding } from "../types";
-import { formatClassYear, isEligibleForNewCadetLineupGig } from "../types";
+import { formatClassYear } from "../types";
 import CadetProfile from "./CadetProfile";
 import MetricEntryModal from "../components/MetricEntryModal";
 import ConductGigReportsSection from "../components/ConductGigReportsSection";
@@ -152,10 +152,9 @@ export default function NewCadetsTab() {
         <MetricEntryModal
           cadetId={addingCadet.id}
           cadetName={`${addingCadet.first_name} ${addingCadet.last_name}`}
+          cadet={addingCadet}
           type="new_cadet_lineup_gig"
-          entries={addingCadet.metric_entries.filter((e) => e.type === "new_cadet_lineup_gig")}
-          canAdd={isEligibleForNewCadetLineupGig(addingCadet)}
-          ineligibleReason="New Cadet Lineup Gigs only apply to cadets currently holding the New Cadet rank."
+          entries={addingCadet.metric_entries}
           onClose={() => setAddingCadet(null)}
           onChanged={refreshAddingCadet}
         />

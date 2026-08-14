@@ -69,9 +69,16 @@ export default function AutoStandingsSection({
             ) : t.standings.length === 0 ? (
               <p className="mt-1 text-sm text-slate-400">No units yet</p>
             ) : (
-              <p className="mt-1 text-sm font-bold text-emerald-900">
-                {t.standings[0].leaderName}'s {label} · {t.standings[0].weightedGigs} gigs
-              </p>
+              (() => {
+                const best = t.standings[0].weightedGigs;
+                const leaders = t.standings.filter((s) => s.weightedGigs === best);
+                return (
+                  <p className="mt-1 text-sm font-bold text-emerald-900">
+                    {leaders.map((l) => `${l.leaderName}'s ${label}`).join(", ")} · {best} gigs
+                    {leaders.length > 1 ? " (tied)" : ""}
+                  </p>
+                );
+              })()
             )}
           </button>
         ))}
@@ -99,19 +106,24 @@ export default function AutoStandingsSection({
                     </td>
                   </tr>
                 )}
-                {active.standings.map((s, i) => (
-                  <tr key={s.leaderId} className={`border-b border-slate-100 ${i === 0 ? "bg-emerald-50/60" : ""}`}>
-                    <td className="px-4 py-2 text-slate-500">
-                      {i + 1}
-                      {i === 0 && <span className="ml-1.5 text-emerald-600">★</span>}
-                    </td>
-                    <td className="px-4 py-2 text-slate-800">
-                      {s.leaderName}'s {label}
-                    </td>
-                    <td className="px-4 py-2 text-slate-600">{s.memberCount}</td>
-                    <td className="px-4 py-2 font-semibold text-slate-800">{s.weightedGigs}</td>
-                  </tr>
-                ))}
+                {active.standings.map((s) => {
+                  // Standard competition ranking (1, 1, 3, ...) so ties share a
+                  // rank instead of being arbitrarily broken by sort order.
+                  const rank = active.standings.filter((o) => o.weightedGigs < s.weightedGigs).length + 1;
+                  return (
+                    <tr key={s.leaderId} className={`border-b border-slate-100 ${rank === 1 ? "bg-emerald-50/60" : ""}`}>
+                      <td className="px-4 py-2 text-slate-500">
+                        {rank}
+                        {rank === 1 && <span className="ml-1.5 text-emerald-600">★</span>}
+                      </td>
+                      <td className="px-4 py-2 text-slate-800">
+                        {s.leaderName}'s {label}
+                      </td>
+                      <td className="px-4 py-2 text-slate-600">{s.memberCount}</td>
+                      <td className="px-4 py-2 font-semibold text-slate-800">{s.weightedGigs}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

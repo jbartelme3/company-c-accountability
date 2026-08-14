@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { cadetsApi } from "../api/client";
-import type { Cadet } from "../types";
+import type { Cadet, CadetProfile as CadetProfileType } from "../types";
 import { CLASS_YEARS, POSITIONS, RANKS } from "../types";
 import CadetProfile from "./CadetProfile";
 import CadetRow from "../components/CadetRow";
 import AddCadetForm from "../components/AddCadetForm";
+import MetricEntryModal from "../components/MetricEntryModal";
 
 export default function CadetsTab() {
   const [cadets, setCadets] = useState<Cadet[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCadetId, setSelectedCadetId] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [addingCadet, setAddingCadet] = useState<CadetProfileType | null>(null);
 
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -31,6 +33,17 @@ export default function CadetsTab() {
   useEffect(() => {
     load();
   }, []);
+
+  async function openAdd(cadetId: number, e: React.MouseEvent) {
+    e.stopPropagation();
+    setAddingCadet(await cadetsApi.get(cadetId));
+  }
+
+  async function refreshAddingCadet() {
+    if (!addingCadet) return;
+    setAddingCadet(await cadetsApi.get(addingCadet.id));
+    load();
+  }
 
   if (selectedCadetId !== null) {
     return (
@@ -157,8 +170,27 @@ export default function CadetsTab() {
         {loading && <p className="px-4 py-3 text-sm text-slate-400">Loading…</p>}
         {!loading && filteredCadets.length === 0 && <p className="px-4 py-3 text-sm text-slate-400">No cadets match.</p>}
         {!loading &&
-          filteredCadets.map((cadet) => <CadetRow key={cadet.id} cadet={cadet} onSelect={() => setSelectedCadetId(cadet.id)} />)}
+          filteredCadets.map((cadet) => (
+            <CadetRow
+              key={cadet.id}
+              cadet={cadet}
+              onSelect={() => setSelectedCadetId(cadet.id)}
+              onAdd={(e) => openAdd(cadet.id, e)}
+            />
+          ))}
       </div>
+
+      {addingCadet && (
+        <MetricEntryModal
+          cadetId={addingCadet.id}
+          cadetName={`${addingCadet.first_name} ${addingCadet.last_name}`}
+          cadet={addingCadet}
+          type={null}
+          entries={addingCadet.metric_entries}
+          onClose={() => setAddingCadet(null)}
+          onChanged={refreshAddingCadet}
+        />
+      )}
     </div>
   );
 }

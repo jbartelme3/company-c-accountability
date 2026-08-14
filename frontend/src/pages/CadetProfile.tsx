@@ -143,10 +143,9 @@ export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onB
         <MetricEntryModal
           cadetId={cadetId}
           cadetName={`${profile.first_name} ${profile.last_name}`}
+          cadet={profile}
           type={openType}
-          entries={profile.metric_entries.filter((e) => e.type === openType)}
-          canAdd={openType !== "new_cadet_lineup_gig" || isEligibleForNewCadetLineupGig(profile)}
-          ineligibleReason="New Cadet Lineup Gigs only apply to cadets currently holding the New Cadet rank."
+          entries={profile.metric_entries}
           onClose={() => setOpenType(null)}
           onChanged={load}
         />
