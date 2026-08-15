@@ -125,6 +125,18 @@ export function isGigScored(type: MetricType): boolean {
   return type in METRIC_GIG_WEIGHT;
 }
 
+// Metric types where "if one roommate gets a gig, they both do" — logging
+// one of these for a cadet with a room_number auto-clones the same entry to
+// every other cadet sharing that room_number (see worker/routes/metrics.ts).
+// Scoped to Room Inspection only: it's the one room-condition gig that
+// applies to any cadet regardless of rank, unlike the New Cadet Lineup
+// Gig's "room" sub-type, which only ever applies to New Cadets.
+const ROOM_PAIRED_METRIC_TYPES = new Set<MetricType>(["daily_room_inspection_gig"]);
+
+export function isRoomPairedMetric(type: MetricType): boolean {
+  return ROOM_PAIRED_METRIC_TYPES.has(type);
+}
+
 // Mixed Laundry and Dry Cleaning are sub-types of a Laundry Gig, not their own
 // metric categories — every laundry_gig entry must specify which one it is.
 export type LaundryType = "mixed_laundry" | "dry_cleaning";

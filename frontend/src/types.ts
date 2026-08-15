@@ -512,6 +512,7 @@ export interface Cadet {
   team_leader_id: number | null;
   squad_leader_id: number | null;
   platoon_leader_id: number | null;
+  room_number: string | null;
 }
 
 export interface NewCadetStanding extends Cadet {
@@ -524,6 +525,7 @@ export interface MetricEntry {
   type: MetricType;
   laundry_type: LaundryType | null;
   lineup_gig_type: LineupGigType | null;
+  room_gig_group_id: string | null;
   entry_date: string;
   note: string | null;
   cadet_name?: string;

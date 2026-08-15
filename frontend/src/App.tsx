@@ -4,10 +4,11 @@ import Login from "./pages/Login";
 import CadetsTab from "./pages/CadetsTab";
 import NewCadetsTab from "./pages/NewCadetsTab";
 import UnitTab from "./pages/UnitTab";
+import RoomsTab from "./pages/RoomsTab";
 import MetricsTab from "./pages/MetricsTab";
 import UnitPerformanceTab from "./pages/UnitPerformanceTab";
 
-type Tab = "cadets" | "newCadets" | "team" | "squad" | "platoon" | "metrics" | "performance";
+type Tab = "cadets" | "newCadets" | "team" | "squad" | "platoon" | "rooms" | "metrics" | "performance";
 
 export default function App() {
   const [authState, setAuthState] = useState<"checking" | "authed" | "unauthed">("checking");
@@ -49,6 +50,7 @@ export default function App() {
             { key: "team", label: "Team" },
             { key: "squad", label: "Squad" },
             { key: "platoon", label: "Platoon" },
+            { key: "rooms", label: "Rooms" },
             { key: "metrics", label: "Metrics" },
             { key: "performance", label: "Unit Performance" },
           ] as { key: Tab; label: string }[]).map((t) => (
@@ -71,6 +73,7 @@ export default function App() {
         {tab === "team" && <UnitTab unitType="team" />}
         {tab === "squad" && <UnitTab unitType="squad" />}
         {tab === "platoon" && <UnitTab unitType="platoon" />}
+        {tab === "rooms" && <RoomsTab />}
         {tab === "metrics" && <MetricsTab />}
         {tab === "performance" && <UnitPerformanceTab />}
       </main>

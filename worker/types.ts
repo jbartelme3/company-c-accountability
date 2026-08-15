@@ -19,6 +19,7 @@ export interface CadetRow {
   team_leader_id: number | null;
   squad_leader_id: number | null;
   platoon_leader_id: number | null;
+  room_number: string | null;
 }
 
 export interface MetricEntryRow {
@@ -27,6 +28,7 @@ export interface MetricEntryRow {
   type: string;
   laundry_type: string | null;
   lineup_gig_type: string | null;
+  room_gig_group_id: string | null;
   entry_date: string;
   note: string | null;
 }

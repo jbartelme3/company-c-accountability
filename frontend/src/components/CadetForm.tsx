@@ -33,6 +33,7 @@ export interface CadetFormValues {
   team_leader_id: number | null;
   squad_leader_id: number | null;
   platoon_leader_id: number | null;
+  room_number: string | null;
   make_number?: number | null;
   rank_change_note?: string | null;
 }
@@ -57,6 +58,7 @@ export default function CadetForm({
   const [teamLeaderId, setTeamLeaderId] = useState<number | null>(initial?.team_leader_id ?? null);
   const [squadLeaderId, setSquadLeaderId] = useState<number | null>(initial?.squad_leader_id ?? null);
   const [platoonLeaderId, setPlatoonLeaderId] = useState<number | null>(initial?.platoon_leader_id ?? null);
+  const [roomNumber, setRoomNumber] = useState(initial?.room_number ?? "");
   const [makeNumber, setMakeNumber] = useState("");
   const [rankChangeNote, setRankChangeNote] = useState("");
   const [allCadets, setAllCadets] = useState<Cadet[]>([]);
@@ -155,6 +157,7 @@ export default function CadetForm({
         team_leader_id: isTeamEligible(position) ? teamLeaderId : null,
         squad_leader_id: isSquadEligible(position) ? squadLeaderId : null,
         platoon_leader_id: isPlatoonEligible(position) ? platoonLeaderId : null,
+        room_number: roomNumber.trim() || null,
         make_number: rankChanged && makeNumber ? Number(makeNumber) : null,
         rank_change_note: rankChanged ? rankChangeNote.trim() || null : null,
       });
@@ -215,6 +218,18 @@ export default function CadetForm({
             ))}
           </select>
           <p className="mt-1 text-xs text-slate-400">Minimum for {position}: {formatRank(POSITION_MIN_RANK[position] ?? null)}</p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600">Room</label>
+          <input
+            value={roomNumber}
+            onChange={(e) => setRoomNumber(e.target.value)}
+            placeholder="e.g. 301"
+            className="mt-1 w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Cadets sharing a room are roommates — a Room Inspection gig for either one logs it for both.
+          </p>
         </div>
 
         {rankChanged && (

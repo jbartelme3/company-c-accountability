@@ -14,6 +14,7 @@ export function serializeCadet(row: CadetRow) {
     team_leader_id: row.team_leader_id,
     squad_leader_id: row.squad_leader_id,
     platoon_leader_id: row.platoon_leader_id,
+    room_number: row.room_number,
   };
 }
 
@@ -24,6 +25,7 @@ export function serializeMetricEntry(row: MetricEntryRow) {
     type: row.type,
     laundry_type: row.laundry_type,
     lineup_gig_type: row.lineup_gig_type,
+    room_gig_group_id: row.room_gig_group_id,
     entry_date: row.entry_date,
     note: row.note,
   };

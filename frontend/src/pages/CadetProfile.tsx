@@ -67,6 +67,7 @@ export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onB
             team_leader_id: profile.team_leader_id,
             squad_leader_id: profile.squad_leader_id,
             platoon_leader_id: profile.platoon_leader_id,
+            room_number: profile.room_number,
           }}
           onCancel={() => setEditing(false)}
           onSubmit={async (values) => {
@@ -95,6 +96,7 @@ export default function CadetProfile({ cadetId, onBack }: { cadetId: number; onB
             {profile.secondary_position && (
               <p className="mt-0.5 text-sm text-slate-600">Secondary Duty: {formatSecondaryPosition(profile.secondary_position)}</p>
             )}
+            {profile.room_number && <p className="mt-0.5 text-sm text-slate-600">Room: {profile.room_number}</p>}
             {profile.is_cadre && <p className="mt-1 text-sm font-medium text-blue-800">Cadre</p>}
             <UnitAssignments profile={profile} />
           </div>

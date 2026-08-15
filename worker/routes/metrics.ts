@@ -5,6 +5,7 @@ import {
   LINEUP_GIG_TYPES,
   METRIC_TYPES,
   isEligibleForNewCadetLineupGig,
+  isRoomPairedMetric,
   type LaundryType,
   type LineupGigType,
   type MetricType,
@@ -125,7 +126,38 @@ metrics.post("/", async (c) => {
       insertStmt.bind(body.cadet_id, body.type, laundryType, lineupGigType, entryDate, note),
     ),
   );
-  const ids = batchResults.map((r) => r.meta.last_row_id);
+  let ids = batchResults.map((r) => r.meta.last_row_id);
+
+  // Room Inspection gigs auto-clone to every roommate — "if one roommate
+  // gets a room gig, they both do." One room_gig_group_id per unit of
+  // quantity, so PATCH/DELETE below can keep each instance's clones in
+  // lockstep without accidentally touching a different day's entries.
+  if (isRoomPairedMetric(body.type) && cadet.room_number) {
+    const { results: roommates } = await DB.prepare("SELECT id FROM cadets WHERE room_number = ? AND id != ?")
+      .bind(cadet.room_number, body.cadet_id)
+      .all<{ id: number }>();
+
+    if (roommates.length > 0) {
+      const groupIds = ids.map(() => crypto.randomUUID());
+      const statements = [
+        ...ids.map((entryId, i) =>
+          DB.prepare("UPDATE metric_entries SET room_gig_group_id = ? WHERE id = ?").bind(groupIds[i], entryId),
+        ),
+        ...roommates.flatMap((roommate) =>
+          groupIds.map((groupId) =>
+            DB.prepare(
+              `INSERT INTO metric_entries (cadet_id, type, laundry_type, lineup_gig_type, room_gig_group_id, entry_date, note, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+            ).bind(roommate.id, body.type, laundryType, lineupGigType, groupId, entryDate, note),
+          ),
+        ),
+      ];
+      const roommateResults = await DB.batch(statements);
+      // Only the INSERTs (everything after the ids.length UPDATEs at the front) produce a new row id.
+      const newIds = roommateResults.slice(ids.length).map((r) => r.meta.last_row_id);
+      ids = [...ids, ...newIds];
+    }
+  }
 
   const { results: rows } = await DB.prepare(
     `${SELECT_WITH_CADET} WHERE m.id IN (${ids.map(() => "?").join(", ")}) ORDER BY m.id ASC`,
@@ -173,6 +205,15 @@ metrics.patch("/:id", async (c) => {
     .bind(merged.entry_date, merged.note, merged.laundry_type, merged.lineup_gig_type, id)
     .run();
 
+  // Keep this entry's roommate clones (same room_gig_group_id) in sync —
+  // laundry_type/lineup_gig_type don't apply to Room Inspection gigs, so
+  // only date/note ever need to propagate.
+  if (existing.room_gig_group_id) {
+    await DB.prepare("UPDATE metric_entries SET entry_date = ?, note = ?, updated_at = datetime('now') WHERE room_gig_group_id = ? AND id != ?")
+      .bind(merged.entry_date, merged.note, existing.room_gig_group_id, id)
+      .run();
+  }
+
   const row = await DB.prepare(`${SELECT_WITH_CADET} WHERE m.id = ?`).bind(id).first<RowWithCadet>();
   return c.json(serializeWithCadet(row!));
 });
@@ -182,9 +223,18 @@ metrics.delete("/:id", async (c) => {
   const id = Number(c.req.param("id"));
   const { DB } = c.env;
 
-  const existing = await DB.prepare("SELECT id FROM metric_entries WHERE id = ?").bind(id).first();
+  const existing = await DB.prepare("SELECT id, room_gig_group_id FROM metric_entries WHERE id = ?")
+    .bind(id)
+    .first<{ id: number; room_gig_group_id: string | null }>();
   if (!existing) return c.json({ error: "Metric entry not found" }, 404);
 
-  await DB.prepare("DELETE FROM metric_entries WHERE id = ?").bind(id).run();
+  // Removing one roommate's side of a joint Room Inspection gig removes the
+  // whole thing — "if one roommate gets a room gig, they both do" cuts both
+  // ways, so it never drifts out of sync.
+  if (existing.room_gig_group_id) {
+    await DB.prepare("DELETE FROM metric_entries WHERE room_gig_group_id = ?").bind(existing.room_gig_group_id).run();
+  } else {
+    await DB.prepare("DELETE FROM metric_entries WHERE id = ?").bind(id).run();
+  }
   return c.body(null, 204);
 });

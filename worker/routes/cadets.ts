@@ -220,6 +220,7 @@ cadets.post("/", async (c) => {
       rank?: string | null;
       class_year?: string | null;
       secondary_position?: string | null;
+      room_number?: string | null;
     } & UnitAssignmentBody
   >();
 
@@ -231,6 +232,7 @@ cadets.post("/", async (c) => {
   const requestedPosition = body.position?.trim() || "Element";
   const classYear = body.class_year?.trim() || null;
   const secondaryPosition = body.secondary_position?.trim() || null;
+  const roomNumber = body.room_number?.trim() || null;
 
   if (classYear && !isClassYearEligibleForPosition(classYear, requestedPosition)) {
     return c.json({ error: classYearError(classYear, requestedPosition) }, 400);
@@ -254,8 +256,8 @@ cadets.post("/", async (c) => {
   const platoonLeaderId = await resolveLeaderId(DB, "platoon", position, body.platoon_leader_id, null, null);
 
   const result = await DB.prepare(
-    `INSERT INTO cadets (first_name, last_name, position, rank, class_year, secondary_position, team_leader_id, squad_leader_id, platoon_leader_id, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+    `INSERT INTO cadets (first_name, last_name, position, rank, class_year, secondary_position, team_leader_id, squad_leader_id, platoon_leader_id, room_number, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
   )
     .bind(
       body.first_name.trim(),
@@ -267,6 +269,7 @@ cadets.post("/", async (c) => {
       teamLeaderId,
       squadLeaderId,
       platoonLeaderId,
+      roomNumber,
     )
     .run();
 
@@ -300,6 +303,7 @@ cadets.patch("/:id", async (c) => {
       rank: string | null;
       class_year: string | null;
       secondary_position: string | null;
+      room_number: string | null;
       make_number: number | null;
       rank_change_note: string | null;
     }> &
@@ -311,6 +315,7 @@ cadets.patch("/:id", async (c) => {
   const requestedRank = body.rank !== undefined ? body.rank?.trim() || null : existing.rank;
   const secondaryPosition =
     body.secondary_position !== undefined ? body.secondary_position?.trim() || null : existing.secondary_position;
+  const roomNumber = body.room_number !== undefined ? body.room_number?.trim() || null : existing.room_number;
 
   if (body.make_number != null && !MAKE_NUMBERS.includes(body.make_number)) {
     return c.json({ error: `make_number must be one of: ${MAKE_NUMBERS.join(", ")}` }, 400);
@@ -351,6 +356,7 @@ cadets.patch("/:id", async (c) => {
     rank: resolvedRank,
     class_year: classYear,
     secondary_position: secondaryPosition,
+    room_number: roomNumber,
   };
 
   // Whatever's requested here for squad/platoon is only a starting point if
@@ -368,7 +374,7 @@ cadets.patch("/:id", async (c) => {
   );
 
   await DB.prepare(
-    `UPDATE cadets SET first_name = ?, last_name = ?, position = ?, rank = ?, class_year = ?, secondary_position = ?, team_leader_id = ?, squad_leader_id = ?, platoon_leader_id = ?, updated_at = datetime('now') WHERE id = ?`,
+    `UPDATE cadets SET first_name = ?, last_name = ?, position = ?, rank = ?, class_year = ?, secondary_position = ?, team_leader_id = ?, squad_leader_id = ?, platoon_leader_id = ?, room_number = ?, updated_at = datetime('now') WHERE id = ?`,
   )
     .bind(
       merged.first_name,
@@ -380,6 +386,7 @@ cadets.patch("/:id", async (c) => {
       teamLeaderId,
       squadLeaderId,
       platoonLeaderId,
+      merged.room_number,
       id,
     )
     .run();

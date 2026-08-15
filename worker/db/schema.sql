@@ -21,6 +21,11 @@ CREATE TABLE IF NOT EXISTS cadets (
   team_leader_id INTEGER REFERENCES cadets (id) ON DELETE SET NULL,
   squad_leader_id INTEGER REFERENCES cadets (id) ON DELETE SET NULL,
   platoon_leader_id INTEGER REFERENCES cadets (id) ON DELETE SET NULL,
+  -- Physical dorm room ("301", etc). No eligibility rules — any cadet can
+  -- have one, independent of position/rank. Two or more cadets sharing the
+  -- same room_number are roommates for the Rooms tab and for auto-pairing
+  -- Room Inspection gigs (see metric_entries.room_gig_group_id below).
+  room_number TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -29,6 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_cadets_name ON cadets (last_name, first_name);
 CREATE INDEX IF NOT EXISTS idx_cadets_team_leader ON cadets (team_leader_id);
 CREATE INDEX IF NOT EXISTS idx_cadets_squad_leader ON cadets (squad_leader_id);
 CREATE INDEX IF NOT EXISTS idx_cadets_platoon_leader ON cadets (platoon_leader_id);
+CREATE INDEX IF NOT EXISTS idx_cadets_room ON cadets (room_number);
 
 -- "New Cadet" is a rank, not a position — data fixup for rows written before
 -- this distinction existed. Safe to rerun: a no-op once no rows are left with
@@ -72,6 +78,12 @@ CREATE TABLE IF NOT EXISTS metric_entries (
   -- gig is weighted 3x wherever a lineup gig count is shown/ranked on (see
   -- worker/routes/new-cadets.ts) — the other three sub-types count as 1.
   lineup_gig_type TEXT CHECK (lineup_gig_type IN ('room', 'uniform', 'conduct', 'common_knowledge')),
+  -- Set only on daily_room_inspection_gig ("Room Inspection") entries created
+  -- for a cadet with roommates (see cadets.room_number): every entry sharing
+  -- a group id is the same joint room event, auto-cloned one-per-roommate on
+  -- create and kept in lockstep on edit/delete (see worker/routes/metrics.ts)
+  -- — "if one roommate gets a room gig, they both do."
+  room_gig_group_id TEXT,
   entry_date TEXT NOT NULL,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -81,6 +93,7 @@ CREATE TABLE IF NOT EXISTS metric_entries (
 CREATE INDEX IF NOT EXISTS idx_metric_entries_cadet ON metric_entries (cadet_id);
 CREATE INDEX IF NOT EXISTS idx_metric_entries_type ON metric_entries (type);
 CREATE INDEX IF NOT EXISTS idx_metric_entries_date ON metric_entries (entry_date);
+CREATE INDEX IF NOT EXISTS idx_metric_entries_room_group ON metric_entries (room_gig_group_id);
 
 -- Weekly Military Banner results — unit-level (Company C as a whole), not
 -- per-cadet, so this is a separate table from metric_entries. Battalion rank
