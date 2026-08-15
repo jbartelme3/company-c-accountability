@@ -74,9 +74,14 @@ export default function CadetForm({
   }, []);
 
   // Streamlining rule: a cadet following a team is always in that Team
-  // Leader's own squad and platoon — not an independent choice, so every
-  // teammate is guaranteed to match (enforced server-side too; this just
-  // keeps the form's displayed values from going stale before save).
+  // Leader's own squad and platoon, and a cadet directly in a squad is
+  // always in that Squad Leader's own platoon — neither is an independent
+  // choice once picked (enforced server-side too, via
+  // reconcileUnitInheritance; these two effects just keep the form's
+  // displayed values from going stale before save). Two separate effects
+  // chain correctly across renders: picking a team updates squadLeaderId,
+  // which then feeds the second effect to derive platoonLeaderId from that
+  // (now-current) squad, same two-pass order the backend uses.
   useEffect(() => {
     if (!teamLeaderId) return;
     const leader = allCadets.find((c) => c.id === teamLeaderId);
@@ -85,6 +90,12 @@ export default function CadetForm({
       setPlatoonLeaderId(leader.platoon_leader_id);
     }
   }, [teamLeaderId, allCadets]);
+
+  useEffect(() => {
+    if (!squadLeaderId || position === "Squad Leader") return;
+    const leader = allCadets.find((c) => c.id === squadLeaderId);
+    if (leader) setPlatoonLeaderId(leader.platoon_leader_id);
+  }, [squadLeaderId, allCadets, position]);
 
   function resetUnitAssignments() {
     setTeamLeaderId(null);
@@ -313,7 +324,7 @@ export default function CadetForm({
                   allCadets={allCadets}
                   value={squadLeaderId}
                   onChange={setSquadLeaderId}
-                  inheritedFromTeamId={isTeamEligible(position) ? teamLeaderId : null}
+                  inheritedFrom={isTeamEligible(position) && teamLeaderId ? { id: teamLeaderId, via: "team" } : null}
                 />
               )}
               {isPlatoonEligible(position) && (
@@ -323,7 +334,13 @@ export default function CadetForm({
                   allCadets={allCadets}
                   value={platoonLeaderId}
                   onChange={setPlatoonLeaderId}
-                  inheritedFromTeamId={isTeamEligible(position) ? teamLeaderId : null}
+                  inheritedFrom={
+                    isTeamEligible(position) && teamLeaderId
+                      ? { id: teamLeaderId, via: "team" }
+                      : isSquadEligible(position) && squadLeaderId && position !== "Squad Leader"
+                        ? { id: squadLeaderId, via: "squad" }
+                        : null
+                  }
                 />
               )}
             </div>
@@ -361,21 +378,21 @@ function UnitAssignmentField({
   allCadets,
   value,
   onChange,
-  inheritedFromTeamId,
+  inheritedFrom,
 }: {
   unitType: UnitType;
   position: string;
   allCadets: Cadet[];
   value: number | null;
   onChange: (id: number | null) => void;
-  /** For squad/platoon only: when set, this cadet follows a team, so squad/platoon are inherited from that Team Leader, not independently chosen (see the streamlining useEffect in CadetForm). */
-  inheritedFromTeamId?: number | null;
+  /** For squad/platoon only: when set, this field is inherited from whichever Team/Squad Leader this cadet follows, not independently chosen (see the streamlining useEffects in CadetForm). */
+  inheritedFrom?: { id: number; via: UnitType } | null;
 }) {
   const leaderPosition = LEADER_POSITION_FOR_UNIT[unitType];
   const isLeader = position === leaderPosition;
   const leaders = allCadets.filter((c) => c.position === leaderPosition);
-  const teamLeader = inheritedFromTeamId ? allCadets.find((c) => c.id === inheritedFromTeamId) : null;
-  const inheritedLeader = teamLeader ? leaders.find((l) => l.id === value) : null;
+  const source = inheritedFrom ? allCadets.find((c) => c.id === inheritedFrom.id) : null;
+  const inheritedLeader = source ? leaders.find((l) => l.id === value) : null;
 
   return (
     <div>
@@ -384,11 +401,11 @@ function UnitAssignmentField({
         <p className="mt-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-500">
           Leads own {unitType}
         </p>
-      ) : teamLeader ? (
+      ) : source && inheritedFrom ? (
         <p className="mt-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-500">
           {inheritedLeader
-            ? `${inheritedLeader.first_name} ${inheritedLeader.last_name}'s ${unitType} (same as ${teamLeader.first_name}'s team)`
-            : `Unassigned (same as ${teamLeader.first_name}'s team)`}
+            ? `${inheritedLeader.first_name} ${inheritedLeader.last_name}'s ${unitType} (same as ${source.first_name}'s ${inheritedFrom.via})`
+            : `Unassigned (same as ${source.first_name}'s ${inheritedFrom.via})`}
         </p>
       ) : (
         <select
