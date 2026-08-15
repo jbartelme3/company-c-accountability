@@ -82,8 +82,12 @@ app.post("/api/webhooks/conduct-gig-report", async (c) => {
   if (!body.reasoning?.trim()) return c.json({ error: "reasoning is required" }, 400);
 
   const { DB } = c.env;
-  const needle = body.cadet_name.trim().toLowerCase();
-  const { results: candidates } = await DB.prepare(
+  // A free-text Microsoft Forms answer is never as clean as a form built
+  // against this schema directly — collapse "Last,First" (no space after
+  // the comma) and doubled-up spaces down to the single-space forms the SQL
+  // patterns below expect, rather than 404ing on what's obviously the same name.
+  const needle = body.cadet_name.trim().toLowerCase().replace(/\s+/g, " ").replace(/\s*,\s*/g, ", ");
+  let { results: candidates } = await DB.prepare(
     `SELECT id FROM cadets
      WHERE lower(first_name || ' ' || last_name) = ?
         OR lower(last_name || ' ' || first_name) = ?
@@ -91,6 +95,15 @@ app.post("/api/webhooks/conduct-gig-report", async (c) => {
   )
     .bind(needle, needle, needle)
     .all<{ id: number }>();
+
+  // Fall back to a first-name-only or last-name-only match (e.g. a reporter
+  // who only typed "Casey") — still safe, the ambiguity check right below
+  // catches anything that matches more than one cadet.
+  if (candidates.length === 0) {
+    ({ results: candidates } = await DB.prepare("SELECT id FROM cadets WHERE lower(first_name) = ? OR lower(last_name) = ?")
+      .bind(needle, needle)
+      .all<{ id: number }>());
+  }
 
   if (candidates.length === 0) {
     return c.json({ error: `No cadet found matching "${body.cadet_name}".` }, 404);
