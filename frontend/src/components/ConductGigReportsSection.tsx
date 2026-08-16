@@ -2,6 +2,14 @@ import { useEffect, useState } from "react";
 import { ApiError, cadetsApi, conductGigReportsApi } from "../api/client";
 import type { Cadet, ConductGigReport } from "../types";
 
+// The public "CC Conduct Gigs Reports" Microsoft Form — feeds this section
+// via a Power Automate flow -> POST /api/webhooks/conduct-gig-report (see
+// README's "Conduct Gig Report form bridge" section). Reports submitted here
+// show up below with source "form"; "+ Add Report" is the manual/cadre-only
+// equivalent for entries that don't come through the form.
+const CONDUCT_GIG_FORM_URL =
+  "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=W5ccw4fWNkGwPiRiv63hr0kGiqx1h0hAqxVAUIP19yxUMkY0M1daWVZHVEE0VUxaTldPN0tCTkhCNS4u";
+
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -40,13 +48,27 @@ export default function ConductGigReportsSection() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-900">Conduct Gig Reports</h2>
-        <button
-          onClick={() => setShowAdd((v) => !v)}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800"
-        >
-          {showAdd ? "Cancel" : "+ Add Report"}
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href={CONDUCT_GIG_FORM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Open Report Form ↗
+          </a>
+          <button
+            onClick={() => setShowAdd((v) => !v)}
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            {showAdd ? "Cancel" : "+ Add Report"}
+          </button>
+        </div>
       </div>
+      <p className="text-xs text-slate-500">
+        Anyone can report a New Cadet for a conduct gig via the Microsoft Form — it shows up here automatically. Use{" "}
+        <span className="font-medium">+ Add Report</span> only for entries that didn't come through the form.
+      </p>
 
       {showAdd && (
         <AddReportForm
