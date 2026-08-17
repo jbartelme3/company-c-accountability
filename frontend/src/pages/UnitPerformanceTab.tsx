@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { bannersApi, cadetsApi, makePeriodsApi, metricsApi } from "../api/client";
 import type { BannerResult, Cadet, MakePeriod, MetricEntry, MetricType } from "../types";
-import { METRIC_LABELS, gigWeight, lineupGigWeight } from "../types";
+import { LINEUP_GIG_TYPES, LINEUP_GIG_TYPE_LABELS } from "../types";
 import { CATEGORICAL_COLORS } from "../lib/chartPalette";
-import { buildWeeklySeries } from "../lib/weeklyBucket";
-import MetricsTrendChart from "../components/MetricsTrendChart";
+import type { ByCadetSubType } from "../components/MetricsByCadetChart";
+import MetricsFacetSection from "../components/MetricsFacetSection";
 import BannerSection from "../components/BannerSection";
 import MakePeriodsEditor from "../components/MakePeriodsEditor";
 import OffensesSection from "../components/OffensesSection";
@@ -14,15 +14,31 @@ import OffensesSection from "../components/OffensesSection";
 // facets of at most 6, each recoloring from the same 8-slot palette. Every
 // facet is scoped to real gig categories/weights (see gigWeight in
 // types.ts) rather than the old flat "Discipline"/"Inspections" grouping.
+// Every facet gets the same By Type/By Cadet toggle (see MetricsFacetSection).
 //
-// Offenses isn't in this list — it's not gig-weighted at all, and has its
-// own By Type/By Cadet mode switch (see OffensesSection), so it's rendered
-// as its own section below rather than through this generic per-metric-type loop.
+// Offenses isn't in this list — it's not gig-weighted at all, and its By
+// Cadet view breaks down by offense_type rather than metric type, so it's
+// rendered as its own section below (see OffensesSection).
 interface Facet {
   title: string;
   types: MetricType[];
   subtitle?: string;
+  byCadet?: {
+    subTypes: ByCadetSubType[];
+    subTypeOf: (e: MetricEntry) => string;
+  };
 }
+
+// New Cadet Lineup Gigs only has one metric type, so By Cadet is more useful
+// split by lineup_gig_type (Room/Uniform/Conduct/Common Knowledge) instead.
+const LINEUP_GIG_BY_CADET = {
+  subTypes: LINEUP_GIG_TYPES.map((t, i) => ({
+    key: t,
+    label: LINEUP_GIG_TYPE_LABELS[t] + (t === "conduct" ? " (3)" : ""),
+    color: CATEGORICAL_COLORS[i],
+  })),
+  subTypeOf: (e: MetricEntry) => e.lineup_gig_type ?? "room",
+};
 
 const FACETS: Facet[] = [
   {
@@ -62,6 +78,7 @@ const FACETS: Facet[] = [
     title: "New Cadet Lineup Gigs",
     types: ["new_cadet_lineup_gig"],
     subtitle: "Conduct Gigs count as 3, everything else as 1. Excluded from Team/Squad/Platoon standings.",
+    byCadet: LINEUP_GIG_BY_CADET,
   },
 ];
 
@@ -105,22 +122,17 @@ export default function UnitPerformanceTab() {
       <div className="space-y-3">
         <h2 className="text-lg font-bold text-slate-900">Cadet Metrics Over Time</h2>
         <div className="space-y-4">
-          {FACETS.map((facet) => {
-            const facetEntries = entries.filter((e) => facet.types.includes(e.type));
-            const series = buildWeeklySeries(
-              facetEntries,
-              (e) => e.type,
-              facet.types.map((type, i) => ({
-                key: type,
-                label: METRIC_LABELS[type],
-                color: CATEGORICAL_COLORS[i],
-                // New Cadet Lineup Gigs weight per-entry (Conduct Gig = 3,
-                // others = 1); every other facet weights by type.
-                weight: type === "new_cadet_lineup_gig" ? (e: MetricEntry) => lineupGigWeight(e.lineup_gig_type) : gigWeight(type),
-              })),
-            );
-            return <MetricsTrendChart key={facet.title} title={facet.title} subtitle={facet.subtitle} series={series} />;
-          })}
+          {FACETS.map((facet) => (
+            <MetricsFacetSection
+              key={facet.title}
+              title={facet.title}
+              subtitle={facet.subtitle}
+              types={facet.types}
+              entries={entries}
+              cadets={cadets}
+              byCadet={facet.byCadet}
+            />
+          ))}
 
           <OffensesSection entries={entries} cadets={cadets} />
         </div>
