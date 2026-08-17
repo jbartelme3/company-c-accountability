@@ -25,7 +25,8 @@ export type MetricType =
   | "brc_inspection_gig"
   | "drc_inspection_gig"
   | "atv"
-  | "other";
+  | "other"
+  | "offense";
 
 export const METRIC_TYPES: MetricType[] = [
   "work_detail",
@@ -44,6 +45,7 @@ export const METRIC_TYPES: MetricType[] = [
   "drc_inspection_gig",
   "atv",
   "other",
+  "offense",
 ];
 
 export const METRIC_LABELS: Record<MetricType, string> = {
@@ -66,6 +68,7 @@ export const METRIC_LABELS: Record<MetricType, string> = {
   drc_inspection_gig: "DRC Gig",
   atv: "ATV",
   other: "Other",
+  offense: "Offense",
 };
 
 // Purely cosmetic (badge color / quick-scan) grouping of whether an entry
@@ -89,6 +92,7 @@ export const METRIC_POLARITY: Record<MetricType, Polarity> = {
   drc_inspection_gig: "negative",
   atv: "negative",
   other: "neutral",
+  offense: "negative",
 };
 
 // How many "gigs" a single entry of this type is worth — the weighting the
@@ -99,8 +103,8 @@ export const METRIC_POLARITY: Record<MetricType, Polarity> = {
 // gig-scoring system at all: haircut/positive_epr/negative_epr are
 // informational ("Extra"), new_cadet_lineup_gig has its own separate
 // per-sub-type weighting (LINEUP_GIG_TYPE_WEIGHT below) and is explicitly
-// excluded from team/squad/platoon standings, and battalion_inspection_gig
-// is retired.
+// excluded from team/squad/platoon standings, battalion_inspection_gig is
+// retired, and offense is a citizenship infraction, not a gig at all.
 export const METRIC_GIG_WEIGHT: Partial<Record<MetricType, number>> = {
   daily_room_inspection_gig: 1,
   brc_inspection_gig: 3,
@@ -136,6 +140,106 @@ const ROOM_PAIRED_METRIC_TYPES = new Set<MetricType>(["daily_room_inspection_gig
 export function isRoomPairedMetric(type: MetricType): boolean {
   return ROOM_PAIRED_METRIC_TYPES.has(type);
 }
+
+// Culver's citizenship infraction categories — Culver Student Handbook,
+// "Types of Infractions (I-IV)" (pp. 65-68). Type I is the most serious
+// (potential dismissal), Type IV the least. Only set on type='offense'
+// entries (see offense_type/offense_detail in worker/db/schema.sql).
+export type OffenseType = "Type I" | "Type II" | "Type III" | "Type IV";
+
+export const OFFENSE_TYPES: OffenseType[] = ["Type I", "Type II", "Type III", "Type IV"];
+
+export const OFFENSE_TYPE_LABELS: Record<OffenseType, string> = {
+  "Type I": "Type I — most serious, normally a Disciplinary Committee meeting, often dismissal or Citizenship Warning",
+  "Type II": "Type II — similar to Type I but a lesser degree; Citizenship Warning, Full Restrictions, or less severe",
+  "Type III": "Type III — normally Full Restrictions or Disciplinary Confinement",
+  "Type IV": "Type IV — a reprimand or other corrective action short of Full Restrictions/DC",
+};
+
+// The specific infractions listed under each type, verbatim from the
+// handbook's bullet lists — each type's list there also ends with
+// "Other conduct falling generally within the description of a Type X
+// violation as determined by Student Life," which OFFENSE_DETAIL_OTHER
+// covers as a single freeform option rather than duplicating that catch-all
+// phrase as a pickable item.
+export const OFFENSE_DETAILS: Record<OffenseType, string[]> = {
+  "Type I": [
+    "Accumulation of Type II, III, and/or IV Infractions",
+    "Harassment/Hazing/Bullying/Substantial Disrespect",
+    "Chemical Substance Violation",
+    "Repeated use or possession of nicotine products",
+    "Production, possession or use of false identification",
+    "Inappropriate sexual behavior",
+    "Endangering others or oneself",
+    "Theft",
+    "Tampering with the alarm system, fire extinguishers, or placing a false 911 call",
+    "Misuse or mistreatment of another's property",
+    "Condoning or failing to report serious violations",
+    "Failure to comply with the stipulations of Citizenship Warning",
+    "Violation of the Network Responsible Use Policy",
+    "Possession of unauthorized Academies' keys or unauthorized entry",
+    "Compromising the welfare of the Academies through inappropriate behavior",
+    "Absent without leave",
+  ],
+  "Type II": [
+    "Accumulation of Type III and/or IV infractions",
+    "Off limits (flagrant and/or off campus)",
+    "Use/possession of nicotine products (1st and 2nd offense)",
+    "Failure to comply with Full Restrictions",
+    "Repeated class absences",
+    "Fighting, physical contact or threats",
+    "Auto Violation (driving/riding/transporting/storage)",
+    "Absent required duty, formation or meeting",
+    "Honor violations other than theft, not limited to dishonesty, cheating or plagiarism",
+    "Abuse of authority",
+    "Safety violation",
+    "Failure to report violations",
+    "After taps violation - out of living unit",
+    "Excessive class lates",
+    "Disrespect or disobedience",
+    "Repeated classroom misconduct",
+    "Guest in living unit after taps",
+    "Late returning from leave",
+  ],
+  "Type III": [
+    "Accumulation of Type IV infractions",
+    "Neglect of duty or neglect of duty by a leader",
+    "General misconduct, unbecoming manners or language",
+    "Class or tutorial absence (1st and 2nd offense)",
+    "Entering another's unoccupied room",
+    "Disobedience or disrespect",
+    "Failure to follow leave or permit procedures",
+    "Absent required duty, formation, or meeting",
+    "Violation of the New Cadet System",
+    "Study time violation",
+    "Off limits (on campus)",
+    "Public display of affection (PDA)",
+    "Failure to report violations",
+    "Physical contact or threats",
+    "Failure to observe corrective action",
+    "Classroom or library misconduct",
+    "Cell Phone Violation",
+    "After taps violation - out of room",
+    "Late to class or tutorial",
+    "Unauthorized item in room",
+    "Violation of the Network Acceptable Use Policy",
+  ],
+  "Type IV": [
+    "Neglect or improper performance of duty",
+    "Failure to follow instructions",
+    "Room condition or arrangement violation",
+    "Late or absent required duty, formation, meeting or meal",
+    "General misconduct",
+    "Failure to sign in or out",
+    "After taps violation (in room)",
+    "Violation of the New Cadet System",
+    "Personal appearance violation",
+  ],
+};
+
+// Sentinel UI value for "Other" — not stored as-is; the freeform text cadre
+// types replaces it in offense_detail (see worker/routes/metrics.ts).
+export const OFFENSE_DETAIL_OTHER = "Other";
 
 // Mixed Laundry and Dry Cleaning are sub-types of a Laundry Gig, not their own
 // metric categories — every laundry_gig entry must specify which one it is.

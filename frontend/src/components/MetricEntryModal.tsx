@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { metricsApi, ApiError } from "../api/client";
-import type { LaundryType, LineupGigType, MetricEntry, MetricType } from "../types";
+import type { LaundryType, LineupGigType, MetricEntry, MetricType, OffenseType } from "../types";
 import {
   LAUNDRY_TYPES,
   LAUNDRY_TYPE_LABELS,
@@ -8,6 +8,10 @@ import {
   LINEUP_GIG_TYPE_LABELS,
   METRIC_LABELS,
   METRIC_TYPE_ORDER,
+  OFFENSE_DETAILS,
+  OFFENSE_DETAIL_OTHER,
+  OFFENSE_TYPES,
+  OFFENSE_TYPE_LABELS,
   isEligibleForNewCadetLineupGig,
 } from "../types";
 
@@ -44,6 +48,11 @@ export default function MetricEntryModal({
   const [note, setNote] = useState("");
   const [laundryType, setLaundryType] = useState<LaundryType>("mixed_laundry");
   const [lineupGigType, setLineupGigType] = useState<LineupGigType>("room");
+  const [offenseType, setOffenseType] = useState<OffenseType | "">("");
+  const [offenseDetail, setOffenseDetail] = useState("");
+  const [offenseDetailOther, setOffenseDetailOther] = useState("");
+  const [isDc, setIsDc] = useState(false);
+  const [isWorkDetail, setIsWorkDetail] = useState(false);
   const [quantity, setQuantity] = useState("1");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -54,10 +63,23 @@ export default function MetricEntryModal({
   const eligible = activeType == null || activeType !== "new_cadet_lineup_gig" || isEligibleForNewCadetLineupGig(cadet);
   const typeEntries = activeType ? entries.filter((e) => e.type === activeType) : [];
 
+  const resolvedOffenseDetail = offenseDetail === OFFENSE_DETAIL_OTHER ? offenseDetailOther.trim() : offenseDetail;
+  const offenseValid = activeType !== "offense" || (!!offenseType && !!resolvedOffenseDetail);
+
+  function handleOffenseTypeChange(next: OffenseType | "") {
+    setOffenseType(next);
+    setOffenseDetail("");
+    setOffenseDetailOther("");
+  }
+
   async function addEntry(e: React.FormEvent) {
     e.preventDefault();
     if (!activeType) {
       setError("Select a metric type.");
+      return;
+    }
+    if (!offenseValid) {
+      setError("Select an offense type and detail.");
       return;
     }
     setError(null);
@@ -68,12 +90,19 @@ export default function MetricEntryModal({
         type: activeType,
         laundry_type: activeType === "laundry_gig" ? laundryType : undefined,
         lineup_gig_type: activeType === "new_cadet_lineup_gig" ? lineupGigType : undefined,
+        offense_type: activeType === "offense" ? (offenseType || undefined) : undefined,
+        offense_detail: activeType === "offense" ? resolvedOffenseDetail : undefined,
+        is_dc: activeType === "offense" ? isDc : undefined,
+        is_work_detail: activeType === "offense" ? isWorkDetail : undefined,
         quantity: Number(quantity) || 1,
         entry_date: date,
         note: note.trim() || null,
       });
       setNote("");
       setQuantity("1");
+      handleOffenseTypeChange("");
+      setIsDc(false);
+      setIsWorkDetail(false);
       onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to add entry.");
@@ -171,6 +200,79 @@ export default function MetricEntryModal({
                 </select>
               </div>
             )}
+            {activeType === "offense" && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600">Offense type</label>
+                  <select
+                    required
+                    value={offenseType}
+                    onChange={(e) => handleOffenseTypeChange(e.target.value as OffenseType)}
+                    className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                  >
+                    <option value="">Select…</option>
+                    {OFFENSE_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {offenseType && (
+                  <div className="w-full">
+                    <label className="block text-xs font-medium text-slate-600">Offense</label>
+                    <select
+                      required
+                      value={offenseDetail}
+                      onChange={(e) => setOffenseDetail(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                    >
+                      <option value="">Select…</option>
+                      {OFFENSE_DETAILS[offenseType].map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                      <option value={OFFENSE_DETAIL_OTHER}>Other…</option>
+                    </select>
+                    <p className="mt-1 text-xs text-slate-400">{OFFENSE_TYPE_LABELS[offenseType]}</p>
+                  </div>
+                )}
+                {offenseDetail === OFFENSE_DETAIL_OTHER && (
+                  <div className="w-full">
+                    <label className="block text-xs font-medium text-slate-600">Describe the offense</label>
+                    <input
+                      required
+                      value={offenseDetailOther}
+                      onChange={(e) => setOffenseDetailOther(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600">DC?</label>
+                  <select
+                    value={isDc ? "yes" : "no"}
+                    onChange={(e) => setIsDc(e.target.value === "yes")}
+                    className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                  >
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600">Work Detail?</label>
+                  <select
+                    value={isWorkDetail ? "yes" : "no"}
+                    onChange={(e) => setIsWorkDetail(e.target.value === "yes")}
+                    className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+                  >
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </div>
+              </>
+            )}
             {activeType && (
               <div>
                 <label className="block text-xs font-medium text-slate-600">How many</label>
@@ -197,7 +299,7 @@ export default function MetricEntryModal({
             </div>
             <button
               type="submit"
-              disabled={submitting || !activeType}
+              disabled={submitting || !activeType || !offenseValid}
               className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
             >
               {submitting ? "Adding…" : "Add"}
@@ -225,6 +327,13 @@ export default function MetricEntryModal({
                   <span className="ml-2 text-xs font-semibold text-slate-500">
                     {LINEUP_GIG_TYPE_LABELS[entry.lineup_gig_type]}
                     {entry.lineup_gig_type === "conduct" ? " (3)" : ""}
+                  </span>
+                )}
+                {entry.offense_type && (
+                  <span className="ml-2 text-xs font-semibold text-slate-500">
+                    {entry.offense_type} — {entry.offense_detail}
+                    {entry.is_dc ? " · DC" : ""}
+                    {entry.is_work_detail ? " · Work Detail" : ""}
                   </span>
                 )}
                 {entry.note && <span className="ml-2 text-slate-500">{entry.note}</span>}

@@ -29,6 +29,10 @@ export interface MetricEntryRow {
   laundry_type: string | null;
   lineup_gig_type: string | null;
   room_gig_group_id: string | null;
+  offense_type: string | null;
+  offense_detail: string | null;
+  is_dc: number | null;
+  is_work_detail: number | null;
   entry_date: string;
   note: string | null;
 }

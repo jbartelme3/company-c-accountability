@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { cadetsApi, metricsApi, ApiError } from "../api/client";
-import type { Cadet, LaundryType, LineupGigType, MetricEntry, MetricType } from "../types";
+import type { Cadet, LaundryType, LineupGigType, MetricEntry, MetricType, OffenseType } from "../types";
 import {
   LAUNDRY_TYPES,
   LAUNDRY_TYPE_LABELS,
   LINEUP_GIG_TYPES,
   LINEUP_GIG_TYPE_LABELS,
+  OFFENSE_DETAILS,
+  OFFENSE_DETAIL_OTHER,
+  OFFENSE_TYPES,
+  OFFENSE_TYPE_LABELS,
   isEligibleForNewCadetLineupGig,
 } from "../types";
 
@@ -26,6 +30,7 @@ export default function MetricsTable({
 }) {
   const [showAdd, setShowAdd] = useState(false);
   const hasSubType = type === "laundry_gig" || type === "new_cadet_lineup_gig";
+  const columnCount = 4 + (hasSubType ? 1 : 0) + (type === "offense" ? 3 : 0);
 
   return (
     <div>
@@ -37,6 +42,13 @@ export default function MetricsTable({
               <th className="py-2 pr-3">Cadet</th>
               {type === "laundry_gig" && <th className="py-2 pr-3">Laundry Type</th>}
               {type === "new_cadet_lineup_gig" && <th className="py-2 pr-3">Gig For</th>}
+              {type === "offense" && (
+                <>
+                  <th className="py-2 pr-3">Offense</th>
+                  <th className="py-2 pr-3">DC</th>
+                  <th className="py-2 pr-3">Work Detail</th>
+                </>
+              )}
               <th className="py-2 pr-3">Note</th>
               <th className="py-2 pr-3" />
             </tr>
@@ -44,7 +56,7 @@ export default function MetricsTable({
           <tbody>
             {entries.length === 0 && (
               <tr>
-                <td colSpan={hasSubType ? 5 : 4} className="py-4 text-sm text-slate-400">
+                <td colSpan={columnCount} className="py-4 text-sm text-slate-400">
                   No entries yet.
                 </td>
               </tr>
@@ -106,6 +118,15 @@ function Row({ type, entry, onChanged }: { type: MetricType; entry: MetricEntry;
           {entry.lineup_gig_type === "conduct" ? " (3)" : ""}
         </td>
       )}
+      {type === "offense" && (
+        <>
+          <td className="py-2 pr-3 text-slate-600">
+            {entry.offense_type} — {entry.offense_detail}
+          </td>
+          <td className="py-2 pr-3 text-slate-600">{entry.is_dc ? "Yes" : "No"}</td>
+          <td className="py-2 pr-3 text-slate-600">{entry.is_work_detail ? "Yes" : "No"}</td>
+        </>
+      )}
       <td className="py-2 pr-3 text-slate-500">{entry.note ?? "-"}</td>
       <td className="py-2 pr-3 text-right">
         <button onClick={remove} disabled={busy} className="text-xs font-medium text-slate-400 hover:text-red-600">
@@ -122,6 +143,11 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
   const [date, setDate] = useState(todayIso());
   const [laundryType, setLaundryType] = useState<LaundryType>("mixed_laundry");
   const [lineupGigType, setLineupGigType] = useState<LineupGigType>("room");
+  const [offenseType, setOffenseType] = useState<OffenseType | "">("");
+  const [offenseDetail, setOffenseDetail] = useState("");
+  const [offenseDetailOther, setOffenseDetailOther] = useState("");
+  const [isDc, setIsDc] = useState(false);
+  const [isWorkDetail, setIsWorkDetail] = useState(false);
   const [quantity, setQuantity] = useState("1");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -132,11 +158,23 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
   }, []);
 
   const selectableCadets = type === "new_cadet_lineup_gig" ? cadets.filter(isEligibleForNewCadetLineupGig) : cadets;
+  const resolvedOffenseDetail = offenseDetail === OFFENSE_DETAIL_OTHER ? offenseDetailOther.trim() : offenseDetail;
+  const offenseValid = type !== "offense" || (!!offenseType && !!resolvedOffenseDetail);
+
+  function handleOffenseTypeChange(next: OffenseType | "") {
+    setOffenseType(next);
+    setOffenseDetail("");
+    setOffenseDetailOther("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!cadetId) {
       setError("Select a cadet.");
+      return;
+    }
+    if (!offenseValid) {
+      setError("Select an offense type and detail.");
       return;
     }
     setError(null);
@@ -147,6 +185,10 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
         type,
         laundry_type: type === "laundry_gig" ? laundryType : undefined,
         lineup_gig_type: type === "new_cadet_lineup_gig" ? lineupGigType : undefined,
+        offense_type: type === "offense" ? (offenseType || undefined) : undefined,
+        offense_detail: type === "offense" ? resolvedOffenseDetail : undefined,
+        is_dc: type === "offense" ? isDc : undefined,
+        is_work_detail: type === "offense" ? isWorkDetail : undefined,
         quantity: Number(quantity) || 1,
         entry_date: date,
         note: note.trim() || null,
@@ -223,6 +265,79 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
           </select>
         </div>
       )}
+      {type === "offense" && (
+        <>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">Offense type</label>
+            <select
+              required
+              value={offenseType}
+              onChange={(e) => handleOffenseTypeChange(e.target.value as OffenseType)}
+              className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+            >
+              <option value="">Select…</option>
+              {OFFENSE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+          {offenseType && (
+            <div className="w-full">
+              <label className="block text-xs font-medium text-slate-600">Offense</label>
+              <select
+                required
+                value={offenseDetail}
+                onChange={(e) => setOffenseDetail(e.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+              >
+                <option value="">Select…</option>
+                {OFFENSE_DETAILS[offenseType].map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+                <option value={OFFENSE_DETAIL_OTHER}>Other…</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-400">{OFFENSE_TYPE_LABELS[offenseType]}</p>
+            </div>
+          )}
+          {offenseDetail === OFFENSE_DETAIL_OTHER && (
+            <div className="w-full">
+              <label className="block text-xs font-medium text-slate-600">Describe the offense</label>
+              <input
+                required
+                value={offenseDetailOther}
+                onChange={(e) => setOffenseDetailOther(e.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+              />
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-slate-600">DC?</label>
+            <select
+              value={isDc ? "yes" : "no"}
+              onChange={(e) => setIsDc(e.target.value === "yes")}
+              className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+            >
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">Work Detail?</label>
+            <select
+              value={isWorkDetail ? "yes" : "no"}
+              onChange={(e) => setIsWorkDetail(e.target.value === "yes")}
+              className="mt-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+            >
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+        </>
+      )}
       <div>
         <label className="block text-xs font-medium text-slate-600">How many</label>
         <select
@@ -243,7 +358,7 @@ function AddEntryForm({ type, onCreated }: { type: MetricType; onCreated: () => 
       </div>
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || !offenseValid}
         className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
       >
         {submitting ? "Adding…" : "Add"}

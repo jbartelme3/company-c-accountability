@@ -9,6 +9,10 @@ function typeLabel(entry: MetricEntry): string {
     const suffix = entry.lineup_gig_type === "conduct" ? " (3)" : "";
     return `${METRIC_LABELS[entry.type]} · ${LINEUP_GIG_TYPE_LABELS[entry.lineup_gig_type]}${suffix}`;
   }
+  if (entry.type === "offense" && entry.offense_type) {
+    const flags = [entry.is_dc ? "DC" : null, entry.is_work_detail ? "Work Detail" : null].filter(Boolean).join(", ");
+    return `${entry.offense_type} — ${entry.offense_detail}${flags ? ` (${flags})` : ""}`;
+  }
   return METRIC_LABELS[entry.type];
 }
 

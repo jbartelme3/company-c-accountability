@@ -68,7 +68,12 @@ CREATE TABLE IF NOT EXISTS metric_entries (
       'brc_inspection_gig',
       'drc_inspection_gig',
       'atv',
-      'other'
+      'other',
+      -- Not really a "gig" — a Culver Type I-IV citizenship infraction (see
+      -- offense_type/offense_detail below). Excluded from gig-weight scoring
+      -- (worker/lib/metrics.ts METRIC_GIG_WEIGHT) and Team/Squad/Platoon
+      -- standings, but still shown in Cadet Metrics and Unit Performance.
+      'offense'
     )
   ),
   -- Only set (and required) when type = 'laundry_gig': Mixed Laundry and Dry
@@ -84,6 +89,18 @@ CREATE TABLE IF NOT EXISTS metric_entries (
   -- create and kept in lockstep on edit/delete (see worker/routes/metrics.ts)
   -- — "if one roommate gets a room gig, they both do."
   room_gig_group_id TEXT,
+  -- Only set (and required) when type = 'offense'. offense_type is the
+  -- Culver citizenship infraction category (Culver Student Handbook, "Types
+  -- of Infractions (I-IV)", pp. 65-68 — Type I is most serious, Type IV
+  -- least); offense_detail is the specific infraction picked from that
+  -- type's list (see worker/lib/metrics.ts OFFENSE_DETAILS), or freeform
+  -- text when cadre picks "Other". is_dc/is_work_detail are the two Y/N
+  -- flags cadre records alongside it — informational on the offense entry
+  -- itself, not auto-logged as separate DC/Work Detail metric entries.
+  offense_type TEXT CHECK (offense_type IN ('Type I', 'Type II', 'Type III', 'Type IV')),
+  offense_detail TEXT,
+  is_dc INTEGER CHECK (is_dc IN (0, 1)),
+  is_work_detail INTEGER CHECK (is_work_detail IN (0, 1)),
   entry_date TEXT NOT NULL,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

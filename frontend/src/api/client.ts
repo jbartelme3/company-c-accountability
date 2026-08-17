@@ -9,6 +9,7 @@ import type {
   MetricEntry,
   MetricType,
   NewCadetStanding,
+  OffenseType,
   UnitAward,
   UnitCompilation,
   UnitType,
@@ -85,13 +86,26 @@ export const metricsApi = {
     type: MetricType;
     laundry_type?: LaundryType | null;
     lineup_gig_type?: LineupGigType | null;
+    offense_type?: OffenseType | null;
+    offense_detail?: string | null;
+    is_dc?: boolean | null;
+    is_work_detail?: boolean | null;
     quantity?: number;
     entry_date?: string;
     note?: string | null;
   }) => request<MetricEntry[]>("/api/metrics", { method: "POST", body: JSON.stringify(data) }),
   update: (
     id: number,
-    data: Partial<{ entry_date: string; note: string | null; laundry_type: LaundryType | null; lineup_gig_type: LineupGigType | null }>,
+    data: Partial<{
+      entry_date: string;
+      note: string | null;
+      laundry_type: LaundryType | null;
+      lineup_gig_type: LineupGigType | null;
+      offense_type: OffenseType | null;
+      offense_detail: string | null;
+      is_dc: boolean | null;
+      is_work_detail: boolean | null;
+    }>,
   ) => request<MetricEntry>(`/api/metrics/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: number) => request<void>(`/api/metrics/${id}`, { method: "DELETE" }),
 };

@@ -26,6 +26,10 @@ export function serializeMetricEntry(row: MetricEntryRow) {
     laundry_type: row.laundry_type,
     lineup_gig_type: row.lineup_gig_type,
     room_gig_group_id: row.room_gig_group_id,
+    offense_type: row.offense_type,
+    offense_detail: row.offense_detail,
+    is_dc: row.is_dc == null ? null : !!row.is_dc,
+    is_work_detail: row.is_work_detail == null ? null : !!row.is_work_detail,
     entry_date: row.entry_date,
     note: row.note,
   };

@@ -1,19 +1,30 @@
 import { useEffect, useState } from "react";
-import { bannersApi, makePeriodsApi, metricsApi } from "../api/client";
-import type { BannerResult, MakePeriod, MetricEntry, MetricType } from "../types";
+import { bannersApi, cadetsApi, makePeriodsApi, metricsApi } from "../api/client";
+import type { BannerResult, Cadet, MakePeriod, MetricEntry, MetricType } from "../types";
 import { METRIC_LABELS, gigWeight, lineupGigWeight } from "../types";
 import { CATEGORICAL_COLORS } from "../lib/chartPalette";
 import { buildWeeklySeries } from "../lib/weeklyBucket";
 import MetricsTrendChart from "../components/MetricsTrendChart";
 import BannerSection from "../components/BannerSection";
 import MakePeriodsEditor from "../components/MakePeriodsEditor";
+import OffensesSection from "../components/OffensesSection";
 
 // Grouped into small multiples — a single chart with 12 series would blow
 // past the categorical palette's safe cap (8), so metrics are split into
 // facets of at most 6, each recoloring from the same 8-slot palette. Every
 // facet is scoped to real gig categories/weights (see gigWeight in
 // types.ts) rather than the old flat "Discipline"/"Inspections" grouping.
-const FACETS: { title: string; types: MetricType[]; subtitle?: string }[] = [
+//
+// Offenses isn't in this list — it's not gig-weighted at all, and has its
+// own By Type/By Cadet mode switch (see OffensesSection), so it's rendered
+// as its own section below rather than through this generic per-metric-type loop.
+interface Facet {
+  title: string;
+  types: MetricType[];
+  subtitle?: string;
+}
+
+const FACETS: Facet[] = [
   {
     title: "Room Inspection Gigs",
     types: ["daily_room_inspection_gig"],
@@ -57,6 +68,7 @@ const FACETS: { title: string; types: MetricType[]; subtitle?: string }[] = [
 
 export default function UnitPerformanceTab() {
   const [entries, setEntries] = useState<MetricEntry[]>([]);
+  const [cadets, setCadets] = useState<Cadet[]>([]);
   const [banners, setBanners] = useState<BannerResult[]>([]);
   const [makePeriods, setMakePeriods] = useState<MakePeriod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,8 +76,14 @@ export default function UnitPerformanceTab() {
   async function load() {
     setLoading(true);
     try {
-      const [entriesData, bannersData, periods] = await Promise.all([metricsApi.list(), bannersApi.list(), makePeriodsApi.list()]);
+      const [entriesData, cadetsData, bannersData, periods] = await Promise.all([
+        metricsApi.list(),
+        cadetsApi.list(),
+        bannersApi.list(),
+        makePeriodsApi.list(),
+      ]);
       setEntries(entriesData);
+      setCadets(cadetsData);
       setBanners(bannersData);
       setMakePeriods(periods);
     } finally {
@@ -104,6 +122,8 @@ export default function UnitPerformanceTab() {
             );
             return <MetricsTrendChart key={facet.title} title={facet.title} subtitle={facet.subtitle} series={series} />;
           })}
+
+          <OffensesSection entries={entries} cadets={cadets} />
         </div>
       </div>
 

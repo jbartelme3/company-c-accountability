@@ -4,11 +4,13 @@ import {
   LAUNDRY_TYPES,
   LINEUP_GIG_TYPES,
   METRIC_TYPES,
+  OFFENSE_TYPES,
   isEligibleForNewCadetLineupGig,
   isRoomPairedMetric,
   type LaundryType,
   type LineupGigType,
   type MetricType,
+  type OffenseType,
 } from "../lib/metrics";
 import { serializeMetricEntry } from "../lib/serialize";
 
@@ -73,6 +75,10 @@ metrics.post("/", async (c) => {
     type: MetricType;
     laundry_type?: LaundryType | null;
     lineup_gig_type?: LineupGigType | null;
+    offense_type?: OffenseType | null;
+    offense_detail?: string | null;
+    is_dc?: boolean | null;
+    is_work_detail?: boolean | null;
     quantity?: number;
     entry_date?: string;
     note?: string | null;
@@ -92,6 +98,17 @@ metrics.post("/", async (c) => {
       { error: `lineup_gig_type is required for a New Cadet Lineup Gig and must be one of: ${LINEUP_GIG_TYPES.join(", ")}` },
       400,
     );
+  }
+  if (body.type === "offense") {
+    if (!OFFENSE_TYPES.includes(body.offense_type as OffenseType)) {
+      return c.json({ error: `offense_type is required for an Offense and must be one of: ${OFFENSE_TYPES.join(", ")}` }, 400);
+    }
+    if (!body.offense_detail?.trim()) {
+      return c.json({ error: "offense_detail is required for an Offense" }, 400);
+    }
+    if (typeof body.is_dc !== "boolean" || typeof body.is_work_detail !== "boolean") {
+      return c.json({ error: "is_dc and is_work_detail (true/false) are required for an Offense" }, 400);
+    }
   }
 
   const quantity = body.quantity != null ? Math.trunc(body.quantity) : 1;
@@ -113,17 +130,21 @@ metrics.post("/", async (c) => {
   const entryDate = body.entry_date?.trim() || new Date().toISOString().slice(0, 10);
   const laundryType = body.type === "laundry_gig" ? body.laundry_type : null;
   const lineupGigType = body.type === "new_cadet_lineup_gig" ? body.lineup_gig_type : null;
+  const offenseType = body.type === "offense" ? body.offense_type : null;
+  const offenseDetail = body.type === "offense" ? body.offense_detail!.trim() : null;
+  const isDc = body.type === "offense" ? (body.is_dc ? 1 : 0) : null;
+  const isWorkDetail = body.type === "offense" ? (body.is_work_detail ? 1 : 0) : null;
   const note = body.note?.trim() || null;
 
   // Bulk-add: each unit ("how many gigs") is still its own dated row, just
   // inserted together in one batch rather than one request per gig.
   const insertStmt = DB.prepare(
-    `INSERT INTO metric_entries (cadet_id, type, laundry_type, lineup_gig_type, entry_date, note, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+    `INSERT INTO metric_entries (cadet_id, type, laundry_type, lineup_gig_type, offense_type, offense_detail, is_dc, is_work_detail, entry_date, note, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
   );
   const batchResults = await DB.batch(
     Array.from({ length: quantity }, () =>
-      insertStmt.bind(body.cadet_id, body.type, laundryType, lineupGigType, entryDate, note),
+      insertStmt.bind(body.cadet_id, body.type, laundryType, lineupGigType, offenseType, offenseDetail, isDc, isWorkDetail, entryDate, note),
     ),
   );
   let ids = batchResults.map((r) => r.meta.last_row_id);
@@ -177,7 +198,16 @@ metrics.patch("/:id", async (c) => {
   if (!existing) return c.json({ error: "Metric entry not found" }, 404);
 
   const body = await c.req.json<
-    Partial<{ entry_date: string; note: string | null; laundry_type: LaundryType | null; lineup_gig_type: LineupGigType | null }>
+    Partial<{
+      entry_date: string;
+      note: string | null;
+      laundry_type: LaundryType | null;
+      lineup_gig_type: LineupGigType | null;
+      offense_type: OffenseType | null;
+      offense_detail: string | null;
+      is_dc: boolean | null;
+      is_work_detail: boolean | null;
+    }>
   >();
 
   if (existing.type === "laundry_gig" && body.laundry_type !== undefined && !LAUNDRY_TYPES.includes(body.laundry_type as LaundryType)) {
@@ -190,6 +220,12 @@ metrics.patch("/:id", async (c) => {
   ) {
     return c.json({ error: `lineup_gig_type must be one of: ${LINEUP_GIG_TYPES.join(", ")}` }, 400);
   }
+  if (existing.type === "offense" && body.offense_type !== undefined && !OFFENSE_TYPES.includes(body.offense_type as OffenseType)) {
+    return c.json({ error: `offense_type must be one of: ${OFFENSE_TYPES.join(", ")}` }, 400);
+  }
+  if (existing.type === "offense" && body.offense_detail !== undefined && !body.offense_detail?.trim()) {
+    return c.json({ error: "offense_detail can't be blank" }, 400);
+  }
 
   const merged = {
     entry_date: body.entry_date?.trim() ?? existing.entry_date,
@@ -197,12 +233,34 @@ metrics.patch("/:id", async (c) => {
     laundry_type: existing.type === "laundry_gig" ? (body.laundry_type ?? existing.laundry_type) : existing.laundry_type,
     lineup_gig_type:
       existing.type === "new_cadet_lineup_gig" ? (body.lineup_gig_type ?? existing.lineup_gig_type) : existing.lineup_gig_type,
+    offense_type: existing.type === "offense" ? (body.offense_type ?? existing.offense_type) : existing.offense_type,
+    offense_detail:
+      existing.type === "offense" ? (body.offense_detail?.trim() ?? existing.offense_detail) : existing.offense_detail,
+    is_dc: existing.type === "offense" ? (body.is_dc !== undefined ? (body.is_dc ? 1 : 0) : existing.is_dc) : existing.is_dc,
+    is_work_detail:
+      existing.type === "offense"
+        ? body.is_work_detail !== undefined
+          ? body.is_work_detail
+            ? 1
+            : 0
+          : existing.is_work_detail
+        : existing.is_work_detail,
   };
 
   await DB.prepare(
-    "UPDATE metric_entries SET entry_date = ?, note = ?, laundry_type = ?, lineup_gig_type = ?, updated_at = datetime('now') WHERE id = ?",
+    "UPDATE metric_entries SET entry_date = ?, note = ?, laundry_type = ?, lineup_gig_type = ?, offense_type = ?, offense_detail = ?, is_dc = ?, is_work_detail = ?, updated_at = datetime('now') WHERE id = ?",
   )
-    .bind(merged.entry_date, merged.note, merged.laundry_type, merged.lineup_gig_type, id)
+    .bind(
+      merged.entry_date,
+      merged.note,
+      merged.laundry_type,
+      merged.lineup_gig_type,
+      merged.offense_type,
+      merged.offense_detail,
+      merged.is_dc,
+      merged.is_work_detail,
+      id,
+    )
     .run();
 
   // Keep this entry's roommate clones (same room_gig_group_id) in sync —
