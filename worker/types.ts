@@ -33,6 +33,7 @@ export interface MetricEntryRow {
   offense_detail: string | null;
   is_dc: number | null;
   is_work_detail: number | null;
+  source_offense_id: number | null;
   entry_date: string;
   note: string | null;
 }

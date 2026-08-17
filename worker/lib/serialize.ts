@@ -30,6 +30,7 @@ export function serializeMetricEntry(row: MetricEntryRow) {
     offense_detail: row.offense_detail,
     is_dc: row.is_dc == null ? null : !!row.is_dc,
     is_work_detail: row.is_work_detail == null ? null : !!row.is_work_detail,
+    source_offense_id: row.source_offense_id,
     entry_date: row.entry_date,
     note: row.note,
   };

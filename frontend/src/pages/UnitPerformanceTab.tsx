@@ -57,7 +57,6 @@ const FACETS: Facet[] = [
   {
     title: "Extra",
     types: ["positive_epr", "negative_epr", "haircut"],
-    subtitle: "Informational — not part of gig standings.",
   },
   {
     title: "New Cadet Lineup Gigs",

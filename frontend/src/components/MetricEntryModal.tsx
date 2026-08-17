@@ -259,6 +259,7 @@ export default function MetricEntryModal({
                     <option value="no">No</option>
                     <option value="yes">Yes</option>
                   </select>
+                  {isDc && <p className="mt-1 text-xs text-slate-400">Also logs a DC entry.</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600">Work Detail?</label>
@@ -270,6 +271,7 @@ export default function MetricEntryModal({
                     <option value="no">No</option>
                     <option value="yes">Yes</option>
                   </select>
+                  {isWorkDetail && <p className="mt-1 text-xs text-slate-400">Also logs a Work Detail entry.</p>}
                 </div>
               </>
             )}

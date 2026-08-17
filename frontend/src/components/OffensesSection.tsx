@@ -45,11 +45,7 @@ export default function OffensesSection({ entries, cadets }: { entries: MetricEn
       </div>
 
       {mode === "type" ? (
-        <MetricsTrendChart
-          title="Offenses"
-          subtitle="Culver Type I-IV citizenship infractions — not a gig, informational only. Type I is most serious, Type IV least."
-          series={typeSeries}
-        />
+        <MetricsTrendChart title="Offenses" series={typeSeries} />
       ) : (
         <OffenseByCadetChart entries={offenseEntries} cadets={cadets} />
       )}

@@ -95,12 +95,18 @@ CREATE TABLE IF NOT EXISTS metric_entries (
   -- least); offense_detail is the specific infraction picked from that
   -- type's list (see worker/lib/metrics.ts OFFENSE_DETAILS), or freeform
   -- text when cadre picks "Other". is_dc/is_work_detail are the two Y/N
-  -- flags cadre records alongside it — informational on the offense entry
-  -- itself, not auto-logged as separate DC/Work Detail metric entries.
+  -- flags cadre records alongside it — checking either also auto-logs a
+  -- matching dc/work_detail entry (see source_offense_id below and
+  -- worker/routes/metrics.ts).
   offense_type TEXT CHECK (offense_type IN ('Type I', 'Type II', 'Type III', 'Type IV')),
   offense_detail TEXT,
   is_dc INTEGER CHECK (is_dc IN (0, 1)),
   is_work_detail INTEGER CHECK (is_work_detail IN (0, 1)),
+  -- Set only on a dc/work_detail entry that was auto-logged from an Offense
+  -- (is_dc/is_work_detail above) — points back at that offense entry, so
+  -- editing/deleting it keeps the auto-logged entry in sync (same idea as
+  -- room_gig_group_id, but parent -> child instead of a peer group).
+  source_offense_id INTEGER REFERENCES metric_entries (id),
   entry_date TEXT NOT NULL,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -111,6 +117,7 @@ CREATE INDEX IF NOT EXISTS idx_metric_entries_cadet ON metric_entries (cadet_id)
 CREATE INDEX IF NOT EXISTS idx_metric_entries_type ON metric_entries (type);
 CREATE INDEX IF NOT EXISTS idx_metric_entries_date ON metric_entries (entry_date);
 CREATE INDEX IF NOT EXISTS idx_metric_entries_room_group ON metric_entries (room_gig_group_id);
+CREATE INDEX IF NOT EXISTS idx_metric_entries_source_offense ON metric_entries (source_offense_id);
 
 -- Weekly Military Banner results — unit-level (Company C as a whole), not
 -- per-cadet, so this is a separate table from metric_entries. Battalion rank

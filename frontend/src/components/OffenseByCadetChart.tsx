@@ -67,7 +67,6 @@ export default function OffenseByCadetChart({ entries, cadets }: { entries: Metr
       <div className="mb-2 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-slate-800">Offenses by Cadet</h3>
-          <p className="text-xs text-slate-400">Most offenses first.</p>
         </div>
         <button onClick={() => setShowTable((v) => !v)} className="text-xs font-medium text-slate-500 hover:text-slate-800">
           {showTable ? "Show chart" : "Show table"}

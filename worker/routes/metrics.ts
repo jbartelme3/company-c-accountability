@@ -38,6 +38,14 @@ const SELECT_WITH_CADET = `
   JOIN cadets c ON c.id = m.cadet_id
 `;
 
+// Reasoning note for a dc/work_detail entry auto-logged from an Offense
+// (see is_dc/is_work_detail below) — same wording whether it's created on
+// POST or kept in sync on PATCH.
+function offenseAutoNote(offenseType: string | null | undefined, offenseDetail: string | null | undefined, note: string | null | undefined): string {
+  const reason = offenseType && offenseDetail ? `${offenseType} — ${offenseDetail}` : "an Offense";
+  return note ? `Auto-logged from Offense (${reason}): ${note}` : `Auto-logged from Offense (${reason})`;
+}
+
 // GET /api/metrics?type=dc&cadet_id=3
 metrics.get("/", async (c) => {
   const type = c.req.query("type");
@@ -148,6 +156,27 @@ metrics.post("/", async (c) => {
     ),
   );
   let ids = batchResults.map((r) => r.meta.last_row_id);
+
+  // Checking "DC?" and/or "Work Detail?" on an Offense also auto-logs a
+  // matching dc/work_detail entry per offense unit — same cadet and date,
+  // with a note explaining where it came from. source_offense_id links each
+  // one back to the offense entry that created it, so PATCH/DELETE below can
+  // keep it in sync.
+  if (body.type === "offense" && (body.is_dc || body.is_work_detail)) {
+    const autoNote = offenseAutoNote(offenseType, offenseDetail, note);
+    const autoInsertStmt = DB.prepare(
+      `INSERT INTO metric_entries (cadet_id, type, entry_date, note, source_offense_id, updated_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+    );
+    const autoStatements = ids.flatMap((offenseId) => {
+      const stmts = [];
+      if (body.is_dc) stmts.push(autoInsertStmt.bind(body.cadet_id, "dc", entryDate, autoNote, offenseId));
+      if (body.is_work_detail) stmts.push(autoInsertStmt.bind(body.cadet_id, "work_detail", entryDate, autoNote, offenseId));
+      return stmts;
+    });
+    const autoResults = await DB.batch(autoStatements);
+    ids = [...ids, ...autoResults.map((r) => r.meta.last_row_id)];
+  }
 
   // Room Inspection gigs auto-clone to every roommate — "if one roommate
   // gets a room gig, they both do." One room_gig_group_id per unit of
@@ -272,6 +301,46 @@ metrics.patch("/:id", async (c) => {
       .run();
   }
 
+  // Keep this offense's auto-logged dc/work_detail entries (source_offense_id)
+  // in sync: flip is_dc/is_work_detail on and one gets created if missing,
+  // flip it off and the existing one is removed, and either way an existing
+  // one's date/reasoning is kept current with this edit.
+  if (existing.type === "offense") {
+    const { results: children } = await DB.prepare("SELECT id, type FROM metric_entries WHERE source_offense_id = ?")
+      .bind(id)
+      .all<{ id: number; type: string }>();
+
+    const autoNote = offenseAutoNote(merged.offense_type, merged.offense_detail, merged.note);
+    const desired: { childType: "dc" | "work_detail"; want: boolean }[] = [
+      { childType: "dc", want: merged.is_dc === 1 },
+      { childType: "work_detail", want: merged.is_work_detail === 1 },
+    ];
+
+    const statements: ReturnType<typeof DB.prepare>[] = [];
+    for (const { childType, want } of desired) {
+      const child = children.find((c) => c.type === childType);
+      if (want && !child) {
+        statements.push(
+          DB.prepare(
+            `INSERT INTO metric_entries (cadet_id, type, entry_date, note, source_offense_id, updated_at)
+             VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+          ).bind(existing.cadet_id, childType, merged.entry_date, autoNote, id),
+        );
+      } else if (want && child) {
+        statements.push(
+          DB.prepare("UPDATE metric_entries SET entry_date = ?, note = ?, updated_at = datetime('now') WHERE id = ?").bind(
+            merged.entry_date,
+            autoNote,
+            child.id,
+          ),
+        );
+      } else if (!want && child) {
+        statements.push(DB.prepare("DELETE FROM metric_entries WHERE id = ?").bind(child.id));
+      }
+    }
+    if (statements.length > 0) await DB.batch(statements);
+  }
+
   const row = await DB.prepare(`${SELECT_WITH_CADET} WHERE m.id = ?`).bind(id).first<RowWithCadet>();
   return c.json(serializeWithCadet(row!));
 });
@@ -292,7 +361,10 @@ metrics.delete("/:id", async (c) => {
   if (existing.room_gig_group_id) {
     await DB.prepare("DELETE FROM metric_entries WHERE room_gig_group_id = ?").bind(existing.room_gig_group_id).run();
   } else {
-    await DB.prepare("DELETE FROM metric_entries WHERE id = ?").bind(id).run();
+    // Deleting an Offense also removes any dc/work_detail entries it
+    // auto-logged (source_offense_id) — deleting one of those entries
+    // directly only removes itself.
+    await DB.prepare("DELETE FROM metric_entries WHERE id = ? OR source_offense_id = ?").bind(id, id).run();
   }
   return c.body(null, 204);
 });

@@ -21,6 +21,7 @@ export type MetricType =
 // battalion_inspection_gig is deliberately omitted — retired in favor of
 // brc_inspection_gig/drc_inspection_gig, never offered for new entries.
 export const METRIC_TYPE_ORDER: MetricType[] = [
+  "offense",
   "work_detail",
   "haircut",
   "laundry_gig",
@@ -35,7 +36,6 @@ export const METRIC_TYPE_ORDER: MetricType[] = [
   "dc",
   "atv",
   "other",
-  "offense",
   "new_cadet_lineup_gig",
 ];
 
@@ -633,6 +633,7 @@ export interface MetricEntry {
   offense_detail: string | null;
   is_dc: boolean | null;
   is_work_detail: boolean | null;
+  source_offense_id: number | null;
   entry_date: string;
   note: string | null;
   cadet_name?: string;
