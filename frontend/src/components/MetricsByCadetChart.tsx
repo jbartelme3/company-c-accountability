@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Cadet, MetricEntry } from "../types";
-import { LAUNDRY_TYPE_LABELS, LINEUP_GIG_TYPE_LABELS, METRIC_LABELS } from "../types";
+import { metricEntryDescription } from "../types";
 import { CHART_INK } from "../lib/chartPalette";
 
 export interface ByCadetSubType {
@@ -19,16 +19,11 @@ interface CadetTotals {
 
 // Default per-entry description for the expandable "what did they do"
 // list — the metric label, plus whatever sub-type detail the entry itself
-// carries (laundry type, lineup gig type, offense type/detail). Notes are
-// appended by the caller, in parentheses.
-function defaultDetailFor(e: MetricEntry): string {
-  if (e.type === "offense" && e.offense_type && e.offense_detail) return `${e.offense_type} — ${e.offense_detail}`;
-  if (e.type === "laundry_gig" && e.laundry_type) return `${METRIC_LABELS[e.type]} — ${LAUNDRY_TYPE_LABELS[e.laundry_type]}`;
-  if (e.type === "new_cadet_lineup_gig" && e.lineup_gig_type) {
-    return `${METRIC_LABELS[e.type]} — ${LINEUP_GIG_TYPE_LABELS[e.lineup_gig_type]}`;
-  }
-  return METRIC_LABELS[e.type];
-}
+// carries (laundry type, lineup gig type, offense type/detail, room gig
+// P.I./Wardrobe reason, absence/inspection/major-green reason — see
+// metricEntrySubDetail in types.ts). Notes are appended by the caller, in
+// parentheses.
+const defaultDetailFor = metricEntryDescription;
 
 function computeTotals(
   entries: MetricEntry[],

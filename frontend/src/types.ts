@@ -121,6 +121,62 @@ export function isGigScored(type: MetricType): boolean {
   return type in METRIC_GIG_WEIGHT;
 }
 
+// Room Inspection reasons — mirrors worker/lib/metrics.ts. A room gig is
+// logged for P.I. and/or Wardrobe (at least one required); if P.I. is one of
+// them, cadre also picks which of the 8 points of P.I. it failed on, per the
+// Eagle Wings handbook's P.I. checklist (Cleanliness and Orderliness, pp.
+// 30-31). Wardrobe has no further sub-detail — the Note field covers it.
+export type RoomGigPiPoint =
+  | "Bed properly made"
+  | "Floor swept clean"
+  | "Desk and bookshelves orderly"
+  | "Wardrobe closed"
+  | "Drapes open & window(s) unobstructed"
+  | "Wastebasket emptied"
+  | "Clean, brush-shined shoes lined under bed"
+  | "General orderly appearance";
+
+export const ROOM_GIG_PI_POINTS: RoomGigPiPoint[] = [
+  "Bed properly made",
+  "Floor swept clean",
+  "Desk and bookshelves orderly",
+  "Wardrobe closed",
+  "Drapes open & window(s) unobstructed",
+  "Wastebasket emptied",
+  "Clean, brush-shined shoes lined under bed",
+  "General orderly appearance",
+];
+
+// Absence reasons. Absence also has its own Y/N "Work Detail?" flag (mirrors
+// Offense's is_dc/is_work_detail) that auto-logs a matching work_detail
+// entry when checked yes.
+export type AbsenceReason = "BRC" | "DRC" | "Spiritual Life" | "All Corps";
+
+export const ABSENCE_REASONS: AbsenceReason[] = ["BRC", "DRC", "Spiritual Life", "All Corps"];
+
+// BRC/DRC/Regimental Inspection Gig reasons — what the gig was actually for.
+export type InspectionReason = "Haircut" | "Shave" | "Uniform";
+
+export const INSPECTION_REASONS: InspectionReason[] = ["Haircut", "Shave", "Uniform"];
+
+// Which metric types carry an InspectionReason — BRC/DRC/Regimental
+// Inspection Gigs only, not Major Green (its own reason set below) or Room
+// Inspection (P.I./Wardrobe above).
+export const INSPECTION_REASON_METRIC_TYPES: MetricType[] = [
+  "brc_inspection_gig",
+  "drc_inspection_gig",
+  "regimental_inspection_gig",
+];
+
+export function hasInspectionReason(type: MetricType): boolean {
+  return INSPECTION_REASON_METRIC_TYPES.includes(type);
+}
+
+// Major Green Inspection Gig reasons.
+export type MajorGreenReason = "Floor" | "Door Glass" | "Bathroom" | "Mirror" | "General Orderly Appearance";
+
+export const MAJOR_GREEN_REASONS: MajorGreenReason[] = ["Floor", "Door Glass", "Bathroom", "Mirror", "General Orderly Appearance"];
+
 // Mixed Laundry and Dry Cleaning are sub-types of a Laundry Gig, not their own
 // metric categories — every laundry_gig entry must specify which one it is.
 export type LaundryType = "mixed_laundry" | "dry_cleaning";
@@ -633,11 +689,109 @@ export interface MetricEntry {
   offense_detail: string | null;
   is_dc: boolean | null;
   is_work_detail: boolean | null;
-  source_offense_id: number | null;
+  source_entry_id: number | null;
+  room_gig_pi: boolean | null;
+  room_gig_wardrobe: boolean | null;
+  room_gig_pi_point: RoomGigPiPoint | null;
+  absence_reason: AbsenceReason | null;
+  inspection_reason: InspectionReason | null;
+  major_green_reason: MajorGreenReason | null;
   entry_date: string;
   note: string | null;
   cadet_name?: string;
   cadet_position?: string;
+}
+
+// "P.I. — <point>", "Wardrobe", "P.I. — <point> + Wardrobe", or "-" if
+// neither is set yet (mid-entry). Room Inspection gigs require at least one
+// of the two (see worker/routes/metrics.ts).
+export function roomGigReasonText(entry: MetricEntry): string {
+  const parts: string[] = [];
+  if (entry.room_gig_pi) parts.push(entry.room_gig_pi_point ? `P.I. — ${entry.room_gig_pi_point}` : "P.I.");
+  if (entry.room_gig_wardrobe) parts.push("Wardrobe");
+  return parts.join(" + ") || "-";
+}
+
+// The type-specific sub-detail for one entry — whichever reason/sub-type
+// dropdown applies to its metric type, or null for types with none. Shared
+// by the Metrics tab's table (MetricsTable), the quick-add modal
+// (MetricEntryModal), and the Unit Performance "By Cadet" dropdown
+// (MetricsByCadetChart) so all three describe an entry the same way.
+export function metricEntrySubDetail(entry: MetricEntry): string | null {
+  switch (entry.type) {
+    case "laundry_gig":
+      return entry.laundry_type ? LAUNDRY_TYPE_LABELS[entry.laundry_type] : null;
+    case "new_cadet_lineup_gig":
+      return entry.lineup_gig_type
+        ? `${LINEUP_GIG_TYPE_LABELS[entry.lineup_gig_type]}${entry.lineup_gig_type === "conduct" ? " (3)" : ""}`
+        : null;
+    case "offense":
+      return entry.offense_type && entry.offense_detail ? `${entry.offense_type} — ${entry.offense_detail}` : null;
+    case "daily_room_inspection_gig": {
+      const text = roomGigReasonText(entry);
+      return text === "-" ? null : text;
+    }
+    case "absence":
+      return entry.absence_reason;
+    case "brc_inspection_gig":
+    case "drc_inspection_gig":
+    case "regimental_inspection_gig":
+      return entry.inspection_reason;
+    case "major_green_inspection_gig":
+      return entry.major_green_reason;
+    default:
+      return null;
+  }
+}
+
+// "Room Inspection — P.I. — Bed properly made", "Absence — BRC", "Work
+// Detail" (no sub-detail), etc.
+export function metricEntryDescription(entry: MetricEntry): string {
+  const sub = metricEntrySubDetail(entry);
+  return sub ? `${METRIC_LABELS[entry.type]} — ${sub}` : METRIC_LABELS[entry.type];
+}
+
+// Extra table columns MetricsTable shows per metric type, beyond the
+// universal Date/Cadet/Note. "reason" reuses metricEntrySubDetail's text
+// under a plain "Reason" header for every type whose only extra info is a
+// single reason dropdown; laundry/lineup keep their existing distinct
+// headers, and offense keeps its existing 3-column layout (Offense/DC/Work
+// Detail) rather than folding into "reason" + a bare Work Detail column.
+export type MetricExtraColumn = "laundry_type" | "lineup_gig_type" | "offense" | "dc" | "work_detail" | "reason";
+
+export const METRIC_EXTRA_COLUMNS: Partial<Record<MetricType, MetricExtraColumn[]>> = {
+  laundry_gig: ["laundry_type"],
+  new_cadet_lineup_gig: ["lineup_gig_type"],
+  offense: ["offense", "dc", "work_detail"],
+  daily_room_inspection_gig: ["reason"],
+  absence: ["reason", "work_detail"],
+  brc_inspection_gig: ["reason"],
+  drc_inspection_gig: ["reason"],
+  regimental_inspection_gig: ["reason"],
+  major_green_inspection_gig: ["reason"],
+};
+
+export const METRIC_EXTRA_COLUMN_LABELS: Record<MetricExtraColumn, string> = {
+  laundry_type: "Laundry Type",
+  lineup_gig_type: "Gig For",
+  offense: "Offense",
+  dc: "DC",
+  work_detail: "Work Detail",
+  reason: "Reason",
+};
+
+export function metricExtraColumnText(entry: MetricEntry, column: MetricExtraColumn): string {
+  switch (column) {
+    case "laundry_type":
+    case "lineup_gig_type":
+    case "offense":
+    case "reason":
+      return metricEntrySubDetail(entry) ?? "-";
+    case "dc":
+      return entry.is_dc ? "Yes" : "No";
+    case "work_detail":
+      return entry.is_work_detail ? "Yes" : "No";
+  }
 }
 
 export interface RankHistoryEntry {

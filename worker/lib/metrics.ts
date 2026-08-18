@@ -241,6 +241,62 @@ export const OFFENSE_DETAILS: Record<OffenseType, string[]> = {
 // types replaces it in offense_detail (see worker/routes/metrics.ts).
 export const OFFENSE_DETAIL_OTHER = "Other";
 
+// Room Inspection reasons — a room gig is logged for P.I. (Personal
+// Inspection) and/or Wardrobe (at least one is required); if P.I. is one of
+// them, cadre also picks which of the 8 points of P.I. it failed on, per the
+// Eagle Wings handbook's P.I. checklist (Cleanliness and Orderliness, pp.
+// 30-31). Wardrobe has no further sub-detail — the Note field covers it.
+export type RoomGigPiPoint =
+  | "Bed properly made"
+  | "Floor swept clean"
+  | "Desk and bookshelves orderly"
+  | "Wardrobe closed"
+  | "Drapes open & window(s) unobstructed"
+  | "Wastebasket emptied"
+  | "Clean, brush-shined shoes lined under bed"
+  | "General orderly appearance";
+
+export const ROOM_GIG_PI_POINTS: RoomGigPiPoint[] = [
+  "Bed properly made",
+  "Floor swept clean",
+  "Desk and bookshelves orderly",
+  "Wardrobe closed",
+  "Drapes open & window(s) unobstructed",
+  "Wastebasket emptied",
+  "Clean, brush-shined shoes lined under bed",
+  "General orderly appearance",
+];
+
+// Absence reasons. Absence also has its own Y/N "Work Detail?" flag (mirrors
+// Offense's is_dc/is_work_detail — see worker/routes/metrics.ts) that
+// auto-logs a matching work_detail entry when checked yes.
+export type AbsenceReason = "BRC" | "DRC" | "Spiritual Life" | "All Corps";
+
+export const ABSENCE_REASONS: AbsenceReason[] = ["BRC", "DRC", "Spiritual Life", "All Corps"];
+
+// BRC/DRC/Regimental Inspection Gig reasons — what the gig was actually for.
+export type InspectionReason = "Haircut" | "Shave" | "Uniform";
+
+export const INSPECTION_REASONS: InspectionReason[] = ["Haircut", "Shave", "Uniform"];
+
+// Which metric types carry an InspectionReason (see inspection_reason in
+// worker/db/schema.sql) — BRC/DRC/Regimental Inspection Gigs only, not Major
+// Green (which has its own reason set below) or Room Inspection (P.I./Wardrobe).
+export const INSPECTION_REASON_METRIC_TYPES: MetricType[] = [
+  "brc_inspection_gig",
+  "drc_inspection_gig",
+  "regimental_inspection_gig",
+];
+
+export function hasInspectionReason(type: MetricType): boolean {
+  return INSPECTION_REASON_METRIC_TYPES.includes(type);
+}
+
+// Major Green Inspection Gig reasons.
+export type MajorGreenReason = "Floor" | "Door Glass" | "Bathroom" | "Mirror" | "General Orderly Appearance";
+
+export const MAJOR_GREEN_REASONS: MajorGreenReason[] = ["Floor", "Door Glass", "Bathroom", "Mirror", "General Orderly Appearance"];
+
 // Mixed Laundry and Dry Cleaning are sub-types of a Laundry Gig, not their own
 // metric categories — every laundry_gig entry must specify which one it is.
 export type LaundryType = "mixed_laundry" | "dry_cleaning";

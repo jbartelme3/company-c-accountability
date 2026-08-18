@@ -1,15 +1,19 @@
 import type {
+  AbsenceReason,
   BannerResult,
   Cadet,
   CadetProfile,
   ConductGigReport,
+  InspectionReason,
   LaundryType,
   LineupGigType,
+  MajorGreenReason,
   MakePeriod,
   MetricEntry,
   MetricType,
   NewCadetStanding,
   OffenseType,
+  RoomGigPiPoint,
   UnitAward,
   UnitCompilation,
   UnitType,
@@ -90,6 +94,12 @@ export const metricsApi = {
     offense_detail?: string | null;
     is_dc?: boolean | null;
     is_work_detail?: boolean | null;
+    room_gig_pi?: boolean | null;
+    room_gig_wardrobe?: boolean | null;
+    room_gig_pi_point?: RoomGigPiPoint | null;
+    absence_reason?: AbsenceReason | null;
+    inspection_reason?: InspectionReason | null;
+    major_green_reason?: MajorGreenReason | null;
     quantity?: number;
     entry_date?: string;
     note?: string | null;
@@ -105,6 +115,12 @@ export const metricsApi = {
       offense_detail: string | null;
       is_dc: boolean | null;
       is_work_detail: boolean | null;
+      room_gig_pi: boolean | null;
+      room_gig_wardrobe: boolean | null;
+      room_gig_pi_point: RoomGigPiPoint | null;
+      absence_reason: AbsenceReason | null;
+      inspection_reason: InspectionReason | null;
+      major_green_reason: MajorGreenReason | null;
     }>,
   ) => request<MetricEntry>(`/api/metrics/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: number) => request<void>(`/api/metrics/${id}`, { method: "DELETE" }),

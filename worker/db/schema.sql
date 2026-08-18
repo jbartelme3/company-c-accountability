@@ -94,19 +94,48 @@ CREATE TABLE IF NOT EXISTS metric_entries (
   -- of Infractions (I-IV)", pp. 65-68 — Type I is most serious, Type IV
   -- least); offense_detail is the specific infraction picked from that
   -- type's list (see worker/lib/metrics.ts OFFENSE_DETAILS), or freeform
-  -- text when cadre picks "Other". is_dc/is_work_detail are the two Y/N
-  -- flags cadre records alongside it — checking either also auto-logs a
-  -- matching dc/work_detail entry (see source_offense_id below and
-  -- worker/routes/metrics.ts).
+  -- text when cadre picks "Other".
   offense_type TEXT CHECK (offense_type IN ('Type I', 'Type II', 'Type III', 'Type IV')),
   offense_detail TEXT,
+  -- is_dc: the Y/N flag cadre records on an offense entry — checking it also
+  -- auto-logs a matching dc entry (see source_entry_id below).
   is_dc INTEGER CHECK (is_dc IN (0, 1)),
+  -- is_work_detail: the same Y/N flag, but usable on either an offense or an
+  -- absence entry — checking it auto-logs a matching work_detail entry.
   is_work_detail INTEGER CHECK (is_work_detail IN (0, 1)),
-  -- Set only on a dc/work_detail entry that was auto-logged from an Offense
-  -- (is_dc/is_work_detail above) — points back at that offense entry, so
-  -- editing/deleting it keeps the auto-logged entry in sync (same idea as
-  -- room_gig_group_id, but parent -> child instead of a peer group).
-  source_offense_id INTEGER REFERENCES metric_entries (id),
+  -- Set only on a dc/work_detail entry that was auto-logged from an offense
+  -- or absence entry (is_dc/is_work_detail above) — points back at whichever
+  -- entry created it, so editing/deleting the parent keeps the auto-logged
+  -- entry in sync (same idea as room_gig_group_id, but parent -> child
+  -- instead of a peer group). See worker/routes/metrics.ts.
+  source_entry_id INTEGER REFERENCES metric_entries (id),
+  -- Only set (and at least one required) when type = 'daily_room_inspection_gig'.
+  -- room_gig_pi/room_gig_wardrobe are Y/N — a room gig is logged for P.I.
+  -- and/or Wardrobe. room_gig_pi_point is which of the 8 points of P.I. it
+  -- failed on (see worker/lib/metrics.ts ROOM_GIG_PI_POINTS), required only
+  -- when room_gig_pi is set; Wardrobe has no further sub-detail (the Note
+  -- field covers it).
+  room_gig_pi INTEGER CHECK (room_gig_pi IN (0, 1)),
+  room_gig_wardrobe INTEGER CHECK (room_gig_wardrobe IN (0, 1)),
+  room_gig_pi_point TEXT CHECK (
+    room_gig_pi_point IN (
+      'Bed properly made',
+      'Floor swept clean',
+      'Desk and bookshelves orderly',
+      'Wardrobe closed',
+      'Drapes open & window(s) unobstructed',
+      'Wastebasket emptied',
+      'Clean, brush-shined shoes lined under bed',
+      'General orderly appearance'
+    )
+  ),
+  -- Only set (and required) when type = 'absence' — why the cadet was absent.
+  absence_reason TEXT CHECK (absence_reason IN ('BRC', 'DRC', 'Spiritual Life', 'All Corps')),
+  -- Only set (and required) when type IN ('brc_inspection_gig',
+  -- 'drc_inspection_gig', 'regimental_inspection_gig') — what the gig was for.
+  inspection_reason TEXT CHECK (inspection_reason IN ('Haircut', 'Shave', 'Uniform')),
+  -- Only set (and required) when type = 'major_green_inspection_gig'.
+  major_green_reason TEXT CHECK (major_green_reason IN ('Floor', 'Door Glass', 'Bathroom', 'Mirror', 'General Orderly Appearance')),
   entry_date TEXT NOT NULL,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -117,7 +146,7 @@ CREATE INDEX IF NOT EXISTS idx_metric_entries_cadet ON metric_entries (cadet_id)
 CREATE INDEX IF NOT EXISTS idx_metric_entries_type ON metric_entries (type);
 CREATE INDEX IF NOT EXISTS idx_metric_entries_date ON metric_entries (entry_date);
 CREATE INDEX IF NOT EXISTS idx_metric_entries_room_group ON metric_entries (room_gig_group_id);
-CREATE INDEX IF NOT EXISTS idx_metric_entries_source_offense ON metric_entries (source_offense_id);
+CREATE INDEX IF NOT EXISTS idx_metric_entries_source_entry ON metric_entries (source_entry_id);
 
 -- Weekly Military Banner results — unit-level (Company C as a whole), not
 -- per-cadet, so this is a separate table from metric_entries. Battalion rank

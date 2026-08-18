@@ -33,7 +33,13 @@ export interface MetricEntryRow {
   offense_detail: string | null;
   is_dc: number | null;
   is_work_detail: number | null;
-  source_offense_id: number | null;
+  source_entry_id: number | null;
+  room_gig_pi: number | null;
+  room_gig_wardrobe: number | null;
+  room_gig_pi_point: string | null;
+  absence_reason: string | null;
+  inspection_reason: string | null;
+  major_green_reason: string | null;
   entry_date: string;
   note: string | null;
 }
